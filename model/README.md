@@ -189,7 +189,7 @@ The current model achieves:
 Below are the key evaluation results:
 
 #### Per-Class Performance
-![Per-Class Breakdown](552428995_1309107360756832_2821116716588066419_n.png)
+![Per-Class Breakdown](./src/asset/other/552428995_1309107360756832_2821116716588066419_n.png)
 *Detailed breakdown of accuracy, precision, and recall for each gesture class*
 
 ### Why Accuracy is Lower Than Expected
@@ -278,5 +278,5 @@ The model's performance is currently limited by several key factors:
 ## 🙏 Previous testset
 
 #### Per-Class Performance
-![Per-Class Breakdown](per_class_breakdown.png)
+![Per-Class Breakdown](./src/asset/other/per_class_breakdown.png)
 *Detailed breakdown of accuracy, precision, and recall for each gesture class. Support is a amout of each data. this data receive as a last testset for Ai training session*
