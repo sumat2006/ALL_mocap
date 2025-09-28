@@ -42,20 +42,37 @@ to run with uvicorn
 
 
 
-Rollback.json 
-> transform number from model prediction to text
 
-config.yaml 
-> path configuration
+```
+|── asset
+  ├── Rollback.json                 # transform number from model prediction to text
+  ├── config.yaml                   # path configuration
+  ├── utils.py                      # store function
+  |── model                         # store all model
+```
 
-utils.py 
-> store function
+Example of config.yaml
+```yaml
+seq_name: ./asset/model/KhanomTanLLM-1B
+shl_path: ./asset/model/model_89.pth
+ft_model: ./asset/model/thai_tts/model/model_850000.pt
+vocab_file: ./asset/model/thai_tts/vocab.txt
+rollback: ./asset/rollback.json
+asr_path: ./asset/model/thonburain-whisper
+```
 
-vachanatts 
-> current tts folder
 
-main.py 
-> main program
+Template (function explain is in /app/README.md)
+```
+|── static
+  ├── index.html                  # base template html
+  ├── logs.html                   # store logs
+  ├── script.js                   # store list of javascript function
+  ├── styles.css                  # store css
+```
+
+## Vanchantts
+> is use to do tts in this work.
 
 # Great Reminder
   The fall of accuracy occured from a testset that is less than we expect and need to test and data is not in a realword situation enough so the accuracy will be falling aprat when test on production in this case 89 -> 43 acc.
