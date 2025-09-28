@@ -54,7 +54,7 @@ to run with uvicorn
 Example of config.yaml
 ```yaml
 seq_name: ./asset/model/KhanomTanLLM-1B
-shl_path: ./asset/model/model_89.pth
+shl_path: ./asset/model/timeseriespt.pth
 ft_model: ./asset/model/thai_tts/model/model_850000.pt
 vocab_file: ./asset/model/thai_tts/vocab.txt
 rollback: ./asset/rollback.json
