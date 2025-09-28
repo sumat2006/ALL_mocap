@@ -16,6 +16,10 @@ use in api calling to do a hand prediction using csv data
 /upload-audio
 Use in ASR
 ```
+```
+/HandRecordStatus
+gives a current status of glove, output is either true or false.
+```
 
 
 we use Websocket to send output back to wep application
@@ -36,11 +40,12 @@ This function requires Acc,Gyro,Flex threshold and window size that denote by N.
 > is a main model that we use in this program to classify sign language, it requires  to put ((chunk_size,feature),output) to clarify the model.
 standard configuration is ((50,28),51)
 
-S2S function use to initial Language model for text ordering.
+**S2S:**
+> function use to initial Language model for text ordering.
 
 in file main.py line 57 thes is used to delete the false input from data i.e. classifier need to receive N false value to stop.
 
 PredictRequest(BaseModel) and Text_voice(BaseModel) indicate the json column values
 
 
-/HandRecordStatus gives a current status of glove, output is either true or false.
+

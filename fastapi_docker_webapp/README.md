@@ -31,36 +31,39 @@ to run with uvicorn
 
 # Basic Knowledge
 
-Model
-Thonburain whisper link[https://github.com/biodatlab/thonburian-whisper] 
-
-KhanommThan link[https://huggingface.co/pythainlp/KhanomTanLLM-1B] 
-
-Our model 
+| Model Type | Model Name | Link |
+| :------ | :---------- | :------ |
+| ASR | Thonburain whisper | https://github.com/biodatlab/thonburian-whisper | 
+| LLM | KhanommThan | https://huggingface.co/pythainlp/KhanomTanLLM-1B |
+| TTS | vachanatts | - |
+| Hand-Sign | Our model | - |
 
 will be kept in app/asset/model
 
-Accuracy will be depended on datatype and model type and model size
+Template can be found in app/static/index.html and css, javascript is there also.
 
-Speed will be depended on comupute unit (GPU)
+Rollback.json 
+> transform number from model prediction to text
 
-Template can b e found in app/static/index.html and css, javascript is there also.
+config.yaml 
+> path configuration
 
-Rollback.json will be used to transform number from model prediction to text
+utils.py 
+> store function
 
-config.yaml use in path configuration
+vachanatts 
+> current tts folder
 
-utils.py is where the function we use
+main.py 
+> main program
 
-vachanatts is a tts libs we use in this repo
-
-main.py is a main programs that run the web application base-on fast-api
-
-# Greate Reminder
+# Great Reminder
   The fall of accuracy occured from a testset that is less than we expect and need to test and data is not in a realword situation enough so the accuracy will be falling aprat when test on production in this case 89 -> 43 acc.
+  Accuracy will be depended on datatype and model type and model size. Speed will be depended on comupute unit (GPU)
 
   Language model , TTS , ASR still lack of speed when test run due to the compute in lack. 
 
 
   if you want to conitnue in this project please update a comput unit , plans and data first and every thing can keep continue easier
 
+  
