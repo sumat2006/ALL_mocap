@@ -8,7 +8,7 @@ This project implements a CNN-based time series classifier designed to recognize
 
 ## 🏗️ Architecture
 The CNN model follows this architecture:
-- **Input**: Time series data with shape `(sequence_length, n_features)` (default: 121 × 21)
+- **Input**: Time series data with shape `(sequence_length, n_features)` (default: 50 × 28)
 - **Normalization**: Batch normalization layer
 - **Conv2D Layers**: Three convolutional blocks with ReLU activation and max pooling
 - **Dense Layers**: Fully connected layers with dropout for classification
@@ -16,7 +16,7 @@ The CNN model follows this architecture:
 
 ### Model Structure
 ```
-Input (121, 21) → BatchNorm → Conv2D(32) → MaxPool → Conv2D(64) → MaxPool → Conv2D(64) → Flatten → Dense(64) → Dense(n_classes)
+Input (50, 28) → BatchNorm → Conv2D(32) → MaxPool → Conv2D(64) → MaxPool → Conv2D(64) → Flatten → Dense(64) → Dense(n_classes)
 ```
 
 ## 📋 Requirements
@@ -42,8 +42,8 @@ scipy
 ├── saved_models/           # Trained model checkpoints
 ├── evaluation_results/     # Model evaluation outputs
 ├── label.json             # Label mappings
-├── rollback.json          # Configuration backups
-└── README.md              # This file
+├── rollback.json          
+└── README.md              
 ```
 
 ## 🚀 Quick Start
@@ -68,13 +68,13 @@ train_data = pd.read_csv('your_train_data.csv')
 # Create dataset
 dataset = ImprovedCustomDataset(
     dataframe=train_data,
-    chunk_size=121,  # Sequence length
+    chunk_size=50,  # Sequence length
     balance_classes=True
 )
 
 # Initialize model
 model = CNNTimeSeriesClassifier(
-    input_shape=(121, 21),  # (sequence_length, n_features)
+    input_shape=(50, 21),  # (sequence_length, n_features)
     n_classes=dataset.n_classes,
     dropout=0.3
 )
@@ -113,7 +113,7 @@ The main configuration parameters are defined in `train.py`:
 ```python
 CONFIG = {
     'model_name': "sign_language_classifier",
-    'chunk_size': 121,           # Sequence length
+    'chunk_size': 50,           # Sequence length
     'batch_size': 64,
     'num_epochs': 100,
     'learning_rate': 0.001,
