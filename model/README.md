@@ -181,28 +181,15 @@ CONFIG = {
 
 ### Model Performance
 The current model achieves:
-- **Test Accuracy**: ~60-70% on real-world data
+- **Test Accuracy**: ~40 on real-world data
 - **F1-Score**: 0.55-0.65 weighted average
-- **Training Time**: 10-30 minutes on GPU (depending on data size)
 
 ### Performance Visualization
 Below are the key evaluation results:
 
-#### Confusion Matrix
-![Confusion Matrix](evaluation_results/confusion_matrix.png)
-*Confusion matrix showing prediction accuracy across different gesture classes*
-
-#### Normalized Confusion Matrix
-![Normalized Confusion Matrix](evaluation_results/confusion_matrix_normalized.png)
-*Normalized confusion matrix highlighting per-class performance patterns*
-
 #### Per-Class Performance
-![Per-Class Breakdown](evaluation_results/per_class_breakdown.png)
+![Per-Class Breakdown](552428995_1309107360756832_2821116716588066419_n.png)
 *Detailed breakdown of accuracy, precision, and recall for each gesture class*
-
-#### Classification Report
-![Classification Report](evaluation_results/classification_report.png)
-*Comprehensive classification metrics including F1-scores and support counts*
 
 ### Why Accuracy is Lower Than Expected
 
