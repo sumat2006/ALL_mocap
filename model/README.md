@@ -268,3 +268,15 @@ The model's performance is currently limited by several key factors:
 - Built with PyTorch deep learning framework
 - Inspired by modern CNN architectures for time series
 - Thai font support for multilingual applications
+
+
+
+
+
+
+
+## 🙏 Previous testset
+
+#### Per-Class Performance
+![Per-Class Breakdown](per_class_breakdown.png)
+*Detailed breakdown of accuracy, precision, and recall for each gesture class. Support is a amout of each data. this data receive as a last testset for Ai training session*
