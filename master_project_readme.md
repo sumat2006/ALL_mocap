@@ -20,10 +20,10 @@ This system consists of three main components working together to enable sign la
 
 **Location**: `collect_data/`
 
-A comprehensive sensor data collection system using ESP32 devices with flex sensors and IMU units.
+A comprehensive sensor data collection system using ESP32S3 devices with flex sensors and IMU units.
 
 **Key Features**:
-- Dual ESP32 setup with ESP-NOW wireless communication
+- Dual ESP32S3 setup with ESP-NOW wireless communication
 - Real-time sensor data visualization
 - Advanced labeling system with Thai language support
 - Synchronized video recording
@@ -58,14 +58,14 @@ CNN-based time series classifier for recognizing sign language gestures from sen
 - Model persistence and loading utilities
 
 **Architecture**:
-- Input: Time series data (121 × 21 features)
+- Input: Time series data (50 × 28 features)
 - CNN layers with batch normalization
 - Dense layers with dropout regularization
 - Multi-class classification output
 
 **Performance**:
-- Current accuracy: ~60-70% on real-world data
-- Training time: 10-30 minutes on GPU
+- Current accuracy: ~45% on real-world data
+- Training time: ~3 minutes on GPU GTX1650
 - Model size: Lightweight for deployment
 
 **Quick Start**:
