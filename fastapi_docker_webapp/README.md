@@ -38,7 +38,7 @@ to run with uvicorn
 | TTS | vachanatts | - |
 | Hand-Sign | Our model | - |
 
-*all of the model will be kept in app/asset/model. Template can be found in app/static/index.html and css, javascript is there also.* 
+*all of the model will be kept in app/asset/model as a folder e.g. KhanoThom-1B. Template can be found in app/static/index.html and css, javascript is there also.* 
 
 
 
