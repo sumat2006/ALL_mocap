@@ -340,7 +340,7 @@ This project is for research and educational purposes. Please ensure compliance 
 
 ## 🙏 Acknowledgments
 
-- Built for SKB Co. data collection project
+- Built for MOCAP data collection project
 - ESP32S3 development using Arduino framework
 - GUI application using Python tkinter
 - Thai language support for gesture recognition
