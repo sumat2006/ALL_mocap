@@ -16,10 +16,18 @@ use in api calling to do a hand prediction using csv data.
 /upload-audio
 Use in ASR that receive audio input as a webm file from web application.
 ```
+
+```
+/upload-files
+Receive file uploaded and then do trasncripe.
+```
+
+
 ```
 /HandRecordStatus
 gives a current status of glove, output is either true or false.
 ```
+
 
 
 Websocket is use to send an audioblob to the web apllication in case of output is audio, e.g. speech from hand sign prediction.
