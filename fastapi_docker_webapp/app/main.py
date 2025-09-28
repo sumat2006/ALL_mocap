@@ -293,9 +293,7 @@ async def upload_audio(request: Request):
 async def upload_audio(file: Annotated[UploadFile,File(description="A file read as UploadFile")]):
     # file_path = os.path.join(UPLOAD_DIR, file.filename)
     
-    
-    
-    
+
     wav = await file.read()
     # print(io.BytesIO(wav))
     wav,fs = sf.read(io.BytesIO(wav))
