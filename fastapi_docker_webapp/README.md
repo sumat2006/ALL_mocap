@@ -38,9 +38,9 @@ to run with uvicorn
 | TTS | vachanatts | - |
 | Hand-Sign | Our model | - |
 
-*will be kept in app/asset/model*
+*all of the model will be kept in app/asset/model. Template can be found in app/static/index.html and css, javascript is there also.* 
 
-Template can be found in app/static/index.html and css, javascript is there also.
+
 
 Rollback.json 
 > transform number from model prediction to text
