@@ -1,0 +1,4 @@
+model: asset\model\model_96.pt
+classifier: asset\model\areYouDoSomething_model.pt
+rollback: asset\other\rollback.json
+test_df : asset\other\20250715_111750_DATA_INDICATOR_sensor.csv

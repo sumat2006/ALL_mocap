@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Backend Logs</title>
+  <style>
+    body{font-family:monospace; padding:16px; background:#111; color:#eee}
+    pre{white-space:pre-wrap}
+    .toolbar{margin-bottom:8px}
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <a href="/">Back</a>
+    &nbsp;|&nbsp;
+    <a href="/logs?lines=100">Last 100 lines</a>
+    &nbsp;|&nbsp;
+    <a href="/logs?lines=500">Last 500 lines</a>
+  </div>
+  <h2>Backend logs</h2>
+  <pre>{{ logs }}</pre>
+</body>
+</html>
