@@ -52,6 +52,7 @@ scipy
 
 Ensure your data is in CSV format with the following structure:
 - Time series features (sensor readings)
+  {timestamp_ms,ax_slav,ay_slav,az_slav,gx_slav,gy_slav,gz_slav,angle_x_slav,angle_y_slav,angle_z_slav,flex_slav_0,flex_slav_1,flex_slav_2,flex_slav_3,flex_slav_4,ax,ay,az,gx,gy,gz,angle_x,angle_y,angle_z,flex_0,flex_1,flex_2,flex_3,flex_4,Label}
 - `Label` column for gesture classes
 - Optional `timestamp_ms` column
 
@@ -257,27 +258,13 @@ The model's performance is currently limited by several key factors:
 - Monitor validation metrics for early stopping
 
 ## 🤝 Contributing
-
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## 🙏 Acknowledgments
-
 - Built with PyTorch deep learning framework
 - Inspired by modern CNN architectures for time series
 - Thai font support for multilingual applications
-
-## 📞 Contact
-
-For questions or issues, please open a GitHub issue or contact the maintainers.
-
----
-
-**Last Updated**: September 2025
