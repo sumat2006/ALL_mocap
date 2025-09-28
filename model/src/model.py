@@ -846,6 +846,63 @@ def save_model(model, label_encoder, dataset_info, history, scheduler_type,
         print(f"❌ Error saving model: {str(e)}")
         return None
     
+def load_model(model_path, device='cuda'):
+    """
+    Load a saved CNN time series classifier model
+    
+    Args:
+        model_path: Path to the saved .pth model file
+        device: Device to load the model on ('cuda' or 'cpu')
+    
+    Returns:
+        tuple: (model, model_info) where model_info contains metadata
+    """
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    
+    print(f"Loading model from: {model_path}")
+    
+    # Load the saved data
+    checkpoint = torch.load(model_path, map_location=device)
+    
+    # Extract model configuration
+    model_config = checkpoint['model_config']
+    input_shape = model_config['input_shape']
+    n_classes = model_config['n_classes']
+    dropout = model_config['dropout']
+    
+    # Create model with the same configuration
+    model = CNNTimeSeriesClassifier(
+        input_shape=input_shape,
+        n_classes=n_classes,
+        dropout=dropout
+    )
+    
+    # Load the trained weights
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device)
+    model.eval()  # Set to evaluation mode
+    
+    # Extract other useful information
+    model_info = {
+        'label_encoder': checkpoint['label_encoder'],
+        'dataset_info': checkpoint['dataset_info'],
+        'training_info': checkpoint['training_info'],
+        'class_names': checkpoint['dataset_info']['class_names'],
+        'input_shape': input_shape,
+        'n_classes': n_classes,
+        'save_timestamp': checkpoint.get('save_timestamp', 'Unknown'),
+        'pytorch_version': checkpoint.get('pytorch_version', 'Unknown')
+    }
+    
+    print(f"Model loaded successfully!")
+    print(f"Input Shape: {input_shape}")
+    print(f"Number of Classes: {n_classes}")
+    print(f"Class Names: {model_info['class_names']}")
+    print(f"Model Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    
+    return model, model_info
+
 def convert_data(features):
     chunk_size = 50
     
