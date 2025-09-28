@@ -2,19 +2,19 @@
 
 ```
 /predict-hand
-use in api calling to do a hand prediction from row-by-row data
+use in api calling to do a hand prediction from row-by-row data.
 ```
 
 
 ```
 /predict_csv
-use in api calling to do a hand prediction using csv data
+use in api calling to do a hand prediction using csv data.
 ```
 
 
 ```
 /upload-audio
-Use in ASR
+Use in ASR that receive audio input as a webm file from web application.
 ```
 ```
 /HandRecordStatus
@@ -22,7 +22,7 @@ gives a current status of glove, output is either true or false.
 ```
 
 
-we use Websocket to send output back to wep application
+Websocket is use to send an audioblob to the web apllication in case of output is audio, e.g. speech from hand sign prediction.
 
 we use fastapi file upload to receive uploaded file from wep application. the fast api will call a static folder to load files in static e.g. index.html, javascript.html
 

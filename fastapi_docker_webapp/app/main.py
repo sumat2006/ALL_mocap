@@ -300,9 +300,8 @@ async def upload_audio(file: Annotated[UploadFile,File(description="A file read 
     # print(io.BytesIO(wav))
     wav,fs = sf.read(io.BytesIO(wav))
     wav = wav.flatten()
-    # output = asr.predict(wav,fs)
+    output = asr.predict(wav,fs)
     time.sleep(10)
-    output = "สวัสดีคับนี้คือเสียงที่เอาไว้ เทส ของทีม โมแคบ คับ"
     {"status": "samples", "info": output}
     return {"status": "samples", "info": output}
 
@@ -360,9 +359,8 @@ async def dummy_bot(file: Annotated[UploadFile,File(description="A file read as 
             state = False
     output = seq.predict("เรียงประโยคนี้ให้หนอย " + " ".join(text_list))
     
-    demo_text = "ฉันกินอาหาร"
     # audio_profile = TTS(output[0]["generated_text"],
-    audio_profile = TTS(demo_text,
+    audio_profile = TTS(output,
         voice="th_f_1",
         output="output.wav",
         volume=2.0,
@@ -385,7 +383,7 @@ async def dummy_bot(file: Annotated[UploadFile,File(description="A file read as 
     # print(audio_b64)
     
     for ws in clients:
-        await ws.send_json({"type": "bot_audio", "content": audio_b64,"text":demo_text})
+        await ws.send_json({"type": "bot_audio", "content": audio_b64,"text":output})
 
             
 
