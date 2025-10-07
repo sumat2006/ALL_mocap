@@ -11,7 +11,7 @@ let currentAudioId = null;
 let audioInstances = new Map();
 
 let userPerMissionId = 1595123198513;
-let deviceStatus = true
+let deviceStatus = false
 const devices = [
   { id: 1595123198513, label: 'MOCAP_test_device_1' },
   { id: 5465198512316, label: 'MOCAP_test_device_2' },
@@ -108,6 +108,58 @@ devices.forEach(device => {
     selectElement.appendChild(option);
 });
 
+async function sendToBackend(deviceId) {
+    console.log(deviceId)
+    try {
+        // Replace with your actual API endpoint
+        const response = await fetch('/selectdevice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                device_id: deviceId,
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Backend response:', result);
+        } else {
+            console.error('Failed to send to backend');
+        }
+    } catch (error) {
+        console.error('Error sending to backend:', error);
+        // Still works locally even if backend is not available
+    }
+}
+
+
+selectElement.addEventListener('change', function() {
+    // Get the selected device ID
+    selectedDeviceId = this.value;
+    console.log(selectedDeviceId);
+    sendToBackend(selectedDeviceId);
+
+    if (selectedDeviceId == 1595123198513)
+        {deviceStatus = true;}
+    else {deviceStatus = false;}
+
+    console.log(deviceStatus)
+    if(deviceStatus){
+        statusDot.className = "status-dot online"
+        document.getElementById("status_text").innerHTML  = "Connected"
+    }
+    else{
+        statusDot.className = "status-dot offlin"
+        document.getElementById("status_text").innerHTML  = "Disconnect"
+    }
+
+});
+
+
+
+
 // DOM elements
 const statusDot = document.getElementById("statusDot")
 const messageInput = document.getElementById('messageInput');
@@ -124,12 +176,7 @@ const fileInput = document.getElementById('fileInput');
 const fileInfo = document.getElementById('fileInfo');
 const fileList = document.getElementById('fileList');
 
-if(deviceStatus){
-    statusDot.className = "status-dot online"
-}
-else{
-    statusDot.className = "status-dot offlin"
-}
+
 
 // Initialize audio recording
 async function initializeAudio() {

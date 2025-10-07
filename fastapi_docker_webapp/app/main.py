@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form,UploadFile, File,WebSocketDisconnect,WebSocket
+from fastapi import FastAPI, Request, Form,UploadFile, File,WebSocketDisconnect,WebSocket,HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse,StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -60,6 +60,7 @@ text_list = []
 isRecordingHand = ""
 pyLoadResiveBuffer = ""
 text = ""
+hand_id = ""
 if torch.cuda.is_available():
     weight = torch.load(shl_path,weights_only=True)
     model.load_state_dict(weight)
@@ -112,6 +113,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class PredictRequest(BaseModel):
     feature: List[List[float]]
     metadata: Optional[dict] = None
@@ -119,6 +121,12 @@ class PredictRequest(BaseModel):
 class Text_voice(BaseModel):
     texts: List[str]
     metadata: Optional[dict] = None
+    
+class DeviceSelection(BaseModel):
+    device_id: str
+    timestamp: Optional[str] = None
+    
+    
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -171,6 +179,30 @@ async def health(payload: Request):
         
     return {"status": "samples", "info": isRecordingHand}
 
+@app.post("/selectdevice")
+async def device_id(selection: DeviceSelection):
+    global hand_id
+    print(selection)
+    try:
+        device_id = selection.device_id
+        device_id = device_id.strip()
+        hand_id = device_id
+        
+        
+        if device_id == str(1595123198513):
+            print("Device one true")
+        
+        return {"status": "samples", "info": device_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing device selection: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    
+
+
 @app.post("/predict-form")
 async def predict_form(request: Request, text: str = Form(...)):
     logger.info(f"/predict called (form) with text={text}")
@@ -205,7 +237,7 @@ async def dummy_bot(payload: PredictRequest):
     global text
     
     print(isRecordingHand)
-    if isRecordingHand:
+    if isRecordingHand and hand_id == "main_device":
         rows = payload.feature
         # print(rows)
         print("1")
@@ -293,13 +325,16 @@ async def upload_audio(request: Request):
 async def upload_audio(file: Annotated[UploadFile,File(description="A file read as UploadFile")]):
     # file_path = os.path.join(UPLOAD_DIR, file.filename)
     
-
+    
+    
+    
     wav = await file.read()
     # print(io.BytesIO(wav))
     wav,fs = sf.read(io.BytesIO(wav))
     wav = wav.flatten()
-    output = asr.predict(wav,fs)
+    # output = asr.predict(wav,fs)
     time.sleep(10)
+    output = "สวัสดีคับนี้คือเสียงที่เอาไว้ เทส ของทีม โมแคบ คับ"
     {"status": "samples", "info": output}
     return {"status": "samples", "info": output}
 
@@ -357,8 +392,9 @@ async def dummy_bot(file: Annotated[UploadFile,File(description="A file read as 
             state = False
     output = seq.predict("เรียงประโยคนี้ให้หนอย " + " ".join(text_list))
     
+    demo_text = "ฉันกินอาหาร"
     # audio_profile = TTS(output[0]["generated_text"],
-    audio_profile = TTS(output,
+    audio_profile = TTS(demo_text,
         voice="th_f_1",
         output="output.wav",
         volume=2.0,
@@ -381,7 +417,7 @@ async def dummy_bot(file: Annotated[UploadFile,File(description="A file read as 
     # print(audio_b64)
     
     for ws in clients:
-        await ws.send_json({"type": "bot_audio", "content": audio_b64,"text":output})
+        await ws.send_json({"type": "bot_audio", "content": audio_b64,"text":demo_text})
 
             
 

@@ -1,0 +1,11 @@
+DATASET-20250710T124209Z-1-002
+DATASET-20250710T124209Z-1-002.zip
+collect_data
+build
+dist
+esp_arduino
+esp_mincropy
+ESP32_GENERIC-20250415-v1.25.0.bin
+app/asset/model
+whisper-large-v3/
+app/old
