@@ -1,19 +1,7 @@
 import torch 
 import torch.nn as nn
-import torch.nn.functional as f
-from torch.utils.data import Dataset,DataLoader
-from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from tqdm.notebook import tqdm
-import json
-from scipy import signal
-import os
-from collections import Counter
-import random
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from argparse import ArgumentParser
 from collections import deque
 from transformers import pipeline,WhisperForConditionalGeneration
 from peft import PeftModel
