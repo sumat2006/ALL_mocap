@@ -8,7 +8,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <QMI8658.h>
 
-// ──── PIN DEFINITIONS ───────────────────────────────────────────────────────────
+// ──── PINa DEFINITIONS ───────────────────────────────────────────────────────────
 #ifndef SENSOR_SCL
 #define SENSOR_SCL  14
 #endif
@@ -37,8 +37,8 @@ float mean_acd_max[NUM_FLEX_SENSORS] = {1800.0f, 1800.0f, 1800.0f, 1800.0f, 1800
 float mean_acd_low[NUM_FLEX_SENSORS] = {900.0f, 900.0f, 900.0f, 900.0f, 900.0f};
 float low_value = 0.0f;
 float high_value = 1000.0f;
-float flex_raw_value[NUM_FLEX_SENSORS];
-unsigned long start_timestamp = 0;
+float low_value = 0.0f;
+float high_value = 1000.0f;
 
 // Simple low-pass filter state
 static const float alpha = 0.5f;

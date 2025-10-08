@@ -1,0 +1,7 @@
+.venv
+collect_data/flexFinal/MainHandd/lib/**
+collect_data/flexFinal/testRdata
+collect_data/flexFinal/ArduinoJson-7.4.1.zip
+collect_data/flexFinal/SlaveHandd/lib/**
+collect_data/poc-hand-flex-main
+collect_data/poc-hand-flex-main(2).zip
