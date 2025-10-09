@@ -18,15 +18,22 @@ Logs are written to `app/logs/app.log` and rotated.
 
 
 
-# FastAPI roun with Uvicorn
+# FastAPI with Uvicorn
 
 ```bash
 pip install uvicorn
 ```
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 80 --reload
+uvicorn main:app --host 0.0.0.0 --port $PORT --reload
 ```
+
+```bash
+#ngrok deployment
+ngrok http --scheme=http  --scheme=https $PORT --host-header=localhost:$PORT
+```
+
+
 to run with uvicorn
 
 # Basic Knowledge
