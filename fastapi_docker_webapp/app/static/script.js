@@ -11,7 +11,7 @@ let currentAudioId = null;
 let audioInstances = new Map();
 
 let userPerMissionId = 1595123198513;
-let deviceStatus = false
+let deviceStatus = true
 const devices = [
   { id: 1595123198513, label: 'MOCAP_test_device_1' },
   { id: 5465198512316, label: 'MOCAP_test_device_2' },
