@@ -9,12 +9,12 @@
 #include <HTTPClient.h> // For ESP32/ESP8266
 #include <ArduinoJson.h>
 #include <esp_wifi.h>
-// #include <WiFiClientSecure.h>
 #include <WiFiClient.h>
+
 const char* ssid = "PEAK_2.4G";
 const char* password = "pxak_spk";
-// API endpoint
 const char* serverUrl = "http://806f5483f9af.ngrok-free.app/predict_hand";
+bool CONLECTOR = false;
 
 // ──── PIN DEFINITIONS ────────────────────────────────────────────────────────────
 #ifndef SENSOR_SCL
@@ -404,27 +404,29 @@ void checkCommand() {
 }
 
 void setupWiFi() {
-  Serial.print("Connecting to WiFi");
-  WiFi.begin(ssid, password);
-  esp_wifi_set_max_tx_power(40);
+  if(!(CONLECTOR)){
+    Serial.print("Connecting to WiFi");
+    WiFi.begin(ssid, password);
+    esp_wifi_set_max_tx_power(40);
 
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-      delay(500);
-      Serial.print(".");
-      attempts++;
-  }
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+        delay(500);
+        Serial.print(".");
+        attempts++;
+    }
 
-  if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("\n✓ WiFi connected!");
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
-      Serial.print("Signal strength: ");
-      Serial.print(WiFi.RSSI());
-      Serial.println(" dBm");
-  } else {
-      Serial.println("\n✗ WiFi connection failed!");
-      ESP.restart();
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\n✓ WiFi connected!");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        Serial.print("Signal strength: ");
+        Serial.print(WiFi.RSSI());
+        Serial.println(" dBm");
+    } else {
+        Serial.println("\n✗ WiFi connection failed!");
+        ESP.restart();
+    }
   }
 }
 
@@ -432,8 +434,6 @@ void setup() {
   // Connect to WiFi
   Serial.begin(9600);
   delay(2000); // Give serial time to initialize
-
- 
   Wire.begin(SENSOR_SDA, SENSOR_SCL);
   // Setup WiFi
   setupWiFi();
@@ -457,13 +457,8 @@ void setup() {
   ADS1015_INITIALIZATION();
   QMI8658_INITIALIZATION();
 
-  Serial.println("\nWiFi connected!");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
   // Initialize BLE
   BLEDevice::init("");
-
   // Start initial scan
   resetCsvTimestamp();
   doScan = true;
@@ -481,8 +476,6 @@ bool docInitialized = false;
 
 void loop() {
   checkCommand();
-  // Serial.print("║ IP Address:    ");
-  // Serial.print(WiFi.localIP());
   if (WiFi.status() != WL_CONNECTED){
     setupWiFi();
   }
@@ -503,7 +496,6 @@ void loop() {
   if (doConnect == true) {
     if (connectToServer()) {
       Serial.println("[BLE] Ready to receive data!");
-    //   doScan = false;
     } else {
       Serial.println("[BLE] Failed to connect, will retry...");
       delay(1000);
@@ -521,12 +513,8 @@ void loop() {
       doScan = true;
     }
   }
-  
-  if(!(WiFi.status() == WL_CONNECTED)){
-    setupWiFi();
-  }
   // ──── READ LOCAL SENSORS ────────────────────────────────────────────────────
-  if (connected && (WiFi.status() == WL_CONNECTED)) {
+  if ((connected && (WiFi.status() == WL_CONNECTED)) || (connected && CONLECTOR)) {
     // Read raw flex values
     readAllFlexSensors(flex_raw_value);
     
@@ -566,21 +554,15 @@ void loop() {
     filtered_ax = alpha * localData.ax + (1.0f - alpha) * filtered_ax;
     filtered_ay = alpha * localData.ay + (1.0f - alpha) * filtered_ay;
     filtered_az = alpha * localData.az + (1.0f - alpha) * filtered_az;
-    
+    // Calculate angles from filtered data
     localData.angle_x = atan2f(filtered_ay, sqrtf(filtered_ax * filtered_ax + filtered_az * filtered_az)) * RAD_TO_DEG;
     localData.angle_y = atan2f(filtered_ax, sqrtf(filtered_ay * filtered_ay + filtered_az * filtered_az)) * RAD_TO_DEG;
     localData.angle_z = atan2f(sqrtf(filtered_ax * filtered_ax + filtered_ay * filtered_ay), filtered_az) * RAD_TO_DEG;
-    
-    // struct ReceivedData {
-    //   float ax, ay, az, gx, gy, gz;
-    //   float angle_x, angle_y, angle_z;
-    //   float flex_raw[NUM_FLEX_SENSORS];
-    // };
-    // ReceivedData senderData;
+
     // Calculate sender angles from filtered data
-    senderData.angle_x = atan2f(filtered_ay_slav, sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
-    senderData.angle_y = atan2f(filtered_ax_slav, sqrtf(filtered_ay_slav * filtered_ay_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
-    senderData.angle_z = atan2f(sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_ay_slav * filtered_ay_slav), filtered_az_slav) * RAD_TO_DEG;
+    // senderData.angle_x = atan2f(filtered_ay_slav, sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
+    // senderData.angle_y = atan2f(filtered_ax_slav, sqrtf(filtered_ay_slav * filtered_ay_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
+    // senderData.angle_z = atan2f(sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_ay_slav * filtered_ay_slav), filtered_az_slav) * RAD_TO_DEG;
     
     // Print combined data (CSV format) - NOW WITH CALIBRATED SENDER FLEX VALUES
     static char outBuf[1024];
@@ -599,17 +581,18 @@ void loop() {
       localData.flex[0], localData.flex[1], localData.flex[2], localData.flex[3], localData.flex[4]
     );
     Serial.printf("[Sensor] %s\n", outBuf);
-    addSampleToDoc();
-    // feature: List[List[float]]
-    if (WiFi.status() == WL_CONNECTED) {
-      // sendHttpPostRequest();
-       // Send when enough samples collected
-      if (sampleCount >= MAX_SAMPLES) {
-        sendHttpPostRequest();
-      }
-    } else {
-      Serial.println("WiFi disconnected");
-    }   
+    if(!(CONLECTOR)){
+      addSampleToDoc();
+      if (WiFi.status() == WL_CONNECTED) {
+        // sendHttpPostRequest();
+        // Send when enough samples collected
+        if (sampleCount >= MAX_SAMPLES) {
+          sendHttpPostRequest();
+        }
+      } else {
+        Serial.println("WiFi disconnected");
+      }   
+    }
     delay(10);
   } else {
     delay(30);
