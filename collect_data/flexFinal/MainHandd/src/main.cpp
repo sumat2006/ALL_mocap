@@ -9,12 +9,12 @@
 #include <HTTPClient.h> // For ESP32/ESP8266
 #include <ArduinoJson.h>
 #include <esp_wifi.h>
-#include <WiFiClientSecure.h>
-
-const char* ssid = "SURADET";
-const char* password = "0878647861";
+// #include <WiFiClientSecure.h>
+#include <WiFiClient.h>
+const char* ssid = "PEAK_2.4G";
+const char* password = "pxak_spk";
 // API endpoint
-const char* serverUrl = "https://bc5f5e13f97d.ngrok-free.app/predict_hand";
+const char* serverUrl = "http://806f5483f9af.ngrok-free.app/predict_hand";
 
 // ──── PIN DEFINITIONS ────────────────────────────────────────────────────────────
 #ifndef SENSOR_SCL
@@ -93,6 +93,9 @@ void flexCalibration();
 void resetCsvTimestamp();
 void printCountdown(int seconds, const char* message_prefix = "[Receiver]");
 void sendHttpPostRequest();
+void initializeDoc();
+void addSampleToDoc();
+
 // Callback when data is received from sender
 static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, 
                            uint8_t* pData, size_t length, bool isNotify) {
@@ -469,10 +472,20 @@ void setup() {
   Serial.println("[Receiver] Type 'help' for a list of commands.");
 }
 
+// Global variables for stacking data
+StaticJsonDocument<8192> doc;  // Increased size for multiple rows
+JsonArray feature;
+int sampleCount = 0;
+const int MAX_SAMPLES = 30;  // Number of samples to collect before sending
+bool docInitialized = false;
+
 void loop() {
   checkCommand();
-  Serial.print("║ IP Address:    ");
-  Serial.print(WiFi.localIP());
+  // Serial.print("║ IP Address:    ");
+  // Serial.print(WiFi.localIP());
+  if (WiFi.status() != WL_CONNECTED){
+    setupWiFi();
+  }
   // Restart scanning if needed
   if (doScan) {
     Serial.println("[BLE] Scanning for ESP32_Sender...");
@@ -586,37 +599,37 @@ void loop() {
       localData.flex[0], localData.flex[1], localData.flex[2], localData.flex[3], localData.flex[4]
     );
     Serial.printf("[Sensor] %s\n", outBuf);
+    addSampleToDoc();
     // feature: List[List[float]]
     if (WiFi.status() == WL_CONNECTED) {
-      sendHttpPostRequest();
+      // sendHttpPostRequest();
+       // Send when enough samples collected
+      if (sampleCount >= MAX_SAMPLES) {
+        sendHttpPostRequest();
+      }
     } else {
       Serial.println("WiFi disconnected");
-    }
-    delay(30);
+    }   
+    delay(10);
   } else {
-    delay(1000);
+    delay(30);
   }
 }
 
-void sendHttpPostRequest() {
-  HTTPClient http;
-  WiFiClientSecure client;
-  
-  // CRITICAL FIX: Disable SSL certificate verification for ngrok
-  // Note: This is acceptable for development/ngrok but NOT for production
-  client.setInsecure();
-  
-  // Initialize HTTP connection with secure client
-  http.begin(client, serverUrl);
-  
-  // Set headers
-  http.addHeader("Content-Type", "application/json");
-  
-  // Set timeout (ngrok can be slow)
-  http.setTimeout(10000); // 10 seconds
-  
-  // Create JSON document (large enough for all sensor data)
-  StaticJsonDocument<1024> doc;
+
+void initializeDoc() {
+  doc.clear();
+  doc["Id"] = "1595123198513";
+  doc["Status"] = 1;
+  feature = doc.createNestedArray("feature");
+  sampleCount = 0;
+  docInitialized = true;
+}
+
+void addSampleToDoc() {
+  if (!docInitialized) {
+    initializeDoc();
+  }
   
   // Your sensor data array
   float temps[] = {(float)(millis() - start_timestamp),
@@ -632,20 +645,38 @@ void sendHttpPostRequest() {
                    localData.flex[0], localData.flex[1], localData.flex[2], 
                    localData.flex[3], localData.flex[4]};
   
-  // Create "feature" as List[List[float]]
-  JsonArray feature = doc.createNestedArray("feature");
-  
-  // Add the temps array as a single row: [[value1, value2, value3, ...]]
+  // Add the temps array as a new row
   JsonArray row = feature.createNestedArray();
-  for (int i = 0; i < 28; i++) {
+  for (int i = 0; i < 29; i++) {
     row.add(temps[i]);
   }
+  
+  sampleCount++;
+}
+
+void sendHttpPostRequest() {
+  if (sampleCount == 0) {
+    Serial.println("No samples to send");
+    return;
+  }
+  
+  HTTPClient http;
+  WiFiClient client;
+  
+  http.begin(client, serverUrl);
+  
+  // Set headers
+  http.addHeader("Content-Type", "application/json");
+  
+  // Set timeout (ngrok can be slow)
+  http.setTimeout(10000); // 10 seconds
   
   // Serialize JSON to string
   String jsonString;
   serializeJson(doc, jsonString);
   
-  Serial.println("Sending JSON: " + jsonString);
+  Serial.println("Sending JSON with " + String(sampleCount) + " samples");
+  Serial.println("JSON: " + jsonString);
   
   // Send POST request
   int httpResponseCode = http.POST(jsonString);
@@ -666,4 +697,76 @@ void sendHttpPostRequest() {
   
   // Free resources
   http.end();
+  
+  // Reset for next batch
+  initializeDoc();
 }
+
+// void sendHttpPostRequest() {
+//   HTTPClient http;
+//   WiFiClient client;
+  
+//   // client.setInsecure();
+  
+//   http.begin(client, serverUrl);
+  
+//   // Set headers
+//   http.addHeader("Content-Type", "application/json");
+  
+//   // Set timeout (ngrok can be slow)
+//   http.setTimeout(10000); // 10 seconds
+  
+//   // Create JSON document (large enough for all sensor data)
+//   StaticJsonDocument<2048> doc;
+  
+//   // Your sensor data array
+//   float temps[] = {(float)(millis() - start_timestamp),
+//                    senderData.ax, senderData.ay, senderData.az, 
+//                    senderData.gx, senderData.gy, senderData.gz, 
+//                    senderData.angle_x, senderData.angle_y, senderData.angle_z,
+//                    flex_calibrated_sender[0], flex_calibrated_sender[1], 
+//                    flex_calibrated_sender[2], flex_calibrated_sender[3], 
+//                    flex_calibrated_sender[4],
+//                    localData.ax, localData.ay, localData.az, 
+//                    localData.gx, localData.gy, localData.gz, 
+//                    localData.angle_x, localData.angle_y, localData.angle_z,
+//                    localData.flex[0], localData.flex[1], localData.flex[2], 
+//                    localData.flex[3], localData.flex[4]};
+  
+//   doc["Id"] = "1595123198513";      // Replace with your actual ID
+//   doc["Status"] = 1;    // Replace with your actual status
+//   // Create "feature" as List[List[float]]
+//   JsonArray feature = doc.createNestedArray("feature");
+  
+//   // Add the temps array as a single row: [[value1, value2, value3, ...]]
+//   JsonArray row = feature.createNestedArray();
+//   for (int i = 0; i < 29; i++) {
+//     row.add(temps[i]);
+//   }
+  
+//   // Serialize JSON to string
+//   String jsonString;
+//   serializeJson(doc, jsonString);
+  
+//   Serial.println("Sending JSON: " + jsonString);
+  
+//   // Send POST request
+//   int httpResponseCode = http.POST(jsonString);
+  
+//   // Handle response
+//   if (httpResponseCode > 0) {
+//     Serial.print("HTTP Response code: ");
+//     Serial.println(httpResponseCode);
+    
+//     String response = http.getString();
+//     Serial.println("Response: " + response);
+//   } else {
+//     Serial.print("Error code: ");
+//     Serial.println(httpResponseCode);
+//     Serial.print("Error: ");
+//     Serial.println(http.errorToString(httpResponseCode));
+//   }
+  
+//   // Free resources
+//   http.end();
+// }
