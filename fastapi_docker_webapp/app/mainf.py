@@ -28,6 +28,9 @@ import pandas as pd
 import time
 "-----------------------------------------"
 ### initial path
+
+print("Lastest update ")
+
 with open("./asset/config.yaml", 'r') as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         print("YAML data loaded successfully:")
@@ -227,7 +230,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def predict_hand(payload: PredictRequest):
 # async def predict_hand(payload: Request):
 
-    # print("use predict ahnd",payload)
+    print("use predict ahnd",payload)
     
     global predictions
     global data 
@@ -238,17 +241,13 @@ async def predict_hand(payload: PredictRequest):
     global thes 
     global text_list
     global text
-    print("payload",payload.Id,"Hand_id",hand_id,isRecordingHand,len(payload.feature),len(payload.feature[0]),"len_text_list",text_list)
-    print(payload.feature)
-    # if isRecordingHand and payload.Id == hand_id:
+    print("payload",payload)
     if isRecordingHand and payload.Id == hand_id:
         rows = payload.feature
         # print(rows)
         print("1")
     # logger.info(f"/aloha result: ",ft,predictions,data,sta,state)
         ft,predictions,data,sta,state = classifier.pred(rows,predictions,data,ft,state,sta)
-        print("state",state,"ft",ft,len(predictions))
-        
         if state==True and len(ft)>=thes and len(predictions) > 40+thes:
             
             sequence = classifier.padding(data,thes)
@@ -266,10 +265,9 @@ async def predict_hand(payload: PredictRequest):
             sta = []
             state = False
             
-    elif not isRecordingHand and (len(text_list) > 0):
+    elif not isRecordingHand and (len(text_list) != 0):
         output = seq.predict("เรียงประโยคนี้ให้หนอย " + " ".join(text_list))
-        print('2')
-        print(output[0]["generated_text"])
+        
         audio_profile = TTS(output[0]["generated_text"],
             voice="th_f_1",
             output="output.wav",
@@ -295,8 +293,6 @@ async def predict_hand(payload: PredictRequest):
         for ws in clients:
             print("send to webssocke")
             await ws.send_json({"type": "bot_audio", "content": audio_b64,"text":" ".join(text_list)})
-            
-        text_list = []
 
     else:
         result = {"received":len(data)}
