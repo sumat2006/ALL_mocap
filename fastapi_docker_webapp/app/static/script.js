@@ -92,7 +92,6 @@ if (!document.getElementById('spinner-styles')) {
     styleSheet.textContent = spinnerCSS;
     document.head.appendChild(styleSheet);
 }
-if (userPerMissionId == 1595123198513){statusDot.className = "status-dot online"}
 
 // Get the select element from the DOM
 const selectElement = document.getElementById('deviceSelect');
