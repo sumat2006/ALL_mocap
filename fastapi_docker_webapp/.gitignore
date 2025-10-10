@@ -8,3 +8,5 @@ esp_mincropy
 ESP32_GENERIC-20250415-v1.25.0.bin
 whisper-large-v3/
 app/old
+app/asset/model/KhanomTanLLM-1B
+app/asset/model/thonburain-whisper
