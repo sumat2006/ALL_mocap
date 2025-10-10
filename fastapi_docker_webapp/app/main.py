@@ -60,7 +60,7 @@ text_list = []
 isRecordingHand = ""
 pyLoadResiveBuffer = ""
 text = ""
-hand_id = ""
+hand_id = str(1595123198513) ## set by defalse
 if torch.cuda.is_available():
     weight = torch.load(shl_path,weights_only=True)
     model.load_state_dict(weight)
