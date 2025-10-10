@@ -11,9 +11,9 @@
 #include <esp_wifi.h>
 #include <WiFiClient.h>
 
-const char* ssid = "PEAK_2.4G";
-const char* password = "pxak_spk";
-const char* serverUrl = "http://806f5483f9af.ngrok-free.app/predict_hand";
+const char* ssid = "xxxxxxxxx";
+const char* password = "xxxxxxxxx";
+const char* serverUrl = "http://xxxxxxxxxxxx.app/predict_hand";
 bool CONLECTOR = false;
 
 // ──── PIN DEFINITIONS ────────────────────────────────────────────────────────────
@@ -120,9 +120,9 @@ static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
     memcpy(&senderData.flex_raw[4], pData + offset, 4); offset += 4;
     
     // Apply filtering to sender's accelerometer data
-    filtered_ax_slav = alpha * senderData.ax + (1.0f - alpha) * filtered_ax_slav;
-    filtered_ay_slav = alpha * senderData.ay + (1.0f - alpha) * filtered_ay_slav;
-    filtered_az_slav = alpha * senderData.az + (1.0f - alpha) * filtered_az_slav;
+    // filtered_ax_slav = alpha * senderData.ax + (1.0f - alpha) * filtered_ax_slav;
+    // filtered_ay_slav = alpha * senderData.ay + (1.0f - alpha) * filtered_ay_slav;
+    // filtered_az_slav = alpha * senderData.az + (1.0f - alpha) * filtered_az_slav;
   }
 }
 
