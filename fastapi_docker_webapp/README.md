@@ -12,8 +12,8 @@ Application will be available at `http://localhost:8000/`.
 - `GET /` : interactive page to send text to `/predict_hand`
 - `POST /predict` : JSON API, body 
 `{"Id": str,
- "Status":int
- "Feature" List[List[float]]
+ "Status":int,
+ "Features" List[List[float]]
 }`
 - `POST /predict-form` : Form POST (used by the interactive page)
 - `GET /logs` : web log viewer (last 200 lines by default) 
