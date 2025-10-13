@@ -118,11 +118,6 @@ static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic,
     memcpy(&senderData.flex_raw[2], pData + offset, 4); offset += 4;
     memcpy(&senderData.flex_raw[3], pData + offset, 4); offset += 4;
     memcpy(&senderData.flex_raw[4], pData + offset, 4); offset += 4;
-    
-    // Apply filtering to sender's accelerometer data
-    // filtered_ax_slav = alpha * senderData.ax + (1.0f - alpha) * filtered_ax_slav;
-    // filtered_ay_slav = alpha * senderData.ay + (1.0f - alpha) * filtered_ay_slav;
-    // filtered_az_slav = alpha * senderData.az + (1.0f - alpha) * filtered_az_slav;
   }
 }
 

@@ -1,7 +1,3 @@
-/*********
-  SENDER - Only reads RAW sensor data and sends to receiver
-  Now with automatic reconnection support
-*********/
 #include <Arduino.h>
 #include <Wire.h>
 #include <BLEDevice.h>
