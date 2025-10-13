@@ -7,7 +7,6 @@
 #include <Adafruit_ADS1X15.h>
 #include <QMI8658.h>
 
-// ──── PIN DEFINITIONS ────────────────────────────────────────────────────────────
 #ifndef SENSOR_SCL
 #define SENSOR_SCL  14
 #endif
