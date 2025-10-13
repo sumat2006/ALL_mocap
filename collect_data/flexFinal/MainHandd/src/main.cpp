@@ -553,11 +553,6 @@ void loop() {
     localData.angle_x = atan2f(filtered_ay, sqrtf(filtered_ax * filtered_ax + filtered_az * filtered_az)) * RAD_TO_DEG;
     localData.angle_y = atan2f(filtered_ax, sqrtf(filtered_ay * filtered_ay + filtered_az * filtered_az)) * RAD_TO_DEG;
     localData.angle_z = atan2f(sqrtf(filtered_ax * filtered_ax + filtered_ay * filtered_ay), filtered_az) * RAD_TO_DEG;
-
-    // Calculate sender angles from filtered data
-    // senderData.angle_x = atan2f(filtered_ay_slav, sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
-    // senderData.angle_y = atan2f(filtered_ax_slav, sqrtf(filtered_ay_slav * filtered_ay_slav + filtered_az_slav * filtered_az_slav)) * RAD_TO_DEG;
-    // senderData.angle_z = atan2f(sqrtf(filtered_ax_slav * filtered_ax_slav + filtered_ay_slav * filtered_ay_slav), filtered_az_slav) * RAD_TO_DEG;
     
     // Print combined data (CSV format) - NOW WITH CALIBRATED SENDER FLEX VALUES
     static char outBuf[1024];
@@ -579,8 +574,6 @@ void loop() {
     if(!(CONLECTOR)){
       addSampleToDoc();
       if (WiFi.status() == WL_CONNECTED) {
-        // sendHttpPostRequest();
-        // Send when enough samples collected
         if (sampleCount >= MAX_SAMPLES) {
           sendHttpPostRequest();
         }
