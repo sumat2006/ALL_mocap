@@ -47,8 +47,13 @@ to run with uvicorn
 
 *all of the model will be kept in app/asset/model as a folder e.g. KhanoThom-1B. Template can be found in app/static/index.html and css, javascript is there also.* 
 
-
-
+# load model
+```
+python3 -m venv env
+activate env
+pip install -U "huggingface_hub[cli]"
+hf download repo_id --repo-type model --local_dir #ใส่ไว้ใน directory ที่ใช้ชื่อเดียวกันกับใน config.yaml
+```
 
 ```
 |── asset
