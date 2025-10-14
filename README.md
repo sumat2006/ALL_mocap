@@ -1,3 +1,94 @@
+## 📝 Quick Start Notes
+
+### 🐳 วิธีรัน Docker
+
+<details>
+<summary><b>🐧 กรณี Mac/Linux</b></summary>
+
+```bash
+cd fastapi_docker_webapp
+chmod +x download_models.sh
+./download_models.sh
+docker-compose up
+```
+</details>
+
+<details>
+<summary><b>🪟 กรณี Windows</b></summary>
+
+```cmd
+# 1. ไปที่ Path
+cd fastapi_docker_webapp
+
+# 2. รัน script ดาวน์โหลด Model
+download_models.bat
+
+# 3. รัน Docker
+docker-compose up
+```
+
+> 💡 **หมายเหตุ**: ถ้าใช้ PowerShell ให้รัน `.\download_models.ps1` แทน
+
+</details>
+
+---
+
+### 🌐 วิธีใช้ ngrok (Expose localhost to Internet)
+
+```bash
+ngrok http 8000
+```
+
+คัดลอก URL ที่ได้ (เช่น `https://abc123.ngrok.io`) ไปใช้ในขั้นตอนถัดไป
+
+---
+
+### ⚙️ วิธีเซ็ตค่า ESP32 Flex Sensors
+
+<details>
+<summary><b>1️⃣ Slave Hand - ตั้งค่า MAC Address</b></summary>
+
+**ไฟล์**: `collect_data/flexFinal/slave_hand/src/main.cpp`
+
+**แก้ไข**: MAC address ของตัว main_hand (บรรทัด 20)
+
+```cpp
+uint8_t mainHandMacAddress[6] = {0xB8, 0xF8, 0x62, 0xE9, 0x65, 0x78};
+```
+
+**วิธีหา MAC Address:**
+- Upload firmware ไปที่ main_hand
+- เปิด Serial Monitor
+- คัดลอก MAC Address ที่แสดง
+
+</details>
+
+<details>
+<summary><b>2️⃣ Main Hub - ตั้งค่า WiFi และ API Server</b></summary>
+
+**ไฟล์**: `collect_data/flexFinal/main_hub/src/main.cpp`
+
+**แก้ไข 2 ส่วน:**
+
+1. **WiFi Credentials**:
+```cpp
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+```
+
+2. **Server URL**:
+```cpp
+// ถ้าใช้ ngrok
+String serverUrl = "https://abc123.ngrok.io/predict_hand";
+
+// ถ้าใช้ Local Network
+String serverUrl = "http://192.168.1.100:8000/predict_hand";
+```
+
+</details>
+
+---
+
 # Sign Language Detection System
 
 A complete end-to-end system for collecting, processing, and classifying sign language gestures using sensor data and machine learning. This project combines hardware sensor collection, deep learning classification, and web deployment into a unified solution.

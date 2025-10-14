@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <Adafruit_ADS1X15.h>
 #include <QMI8658.h>
 
@@ -14,10 +15,9 @@
 #endif
 
 // ──── MAC Address Configuration ─────────────────────────────────────────────────
-// MAC Address ของ main_hand (กรอกเป็น String แล้วแปลงอัตโนมัติใน setup)
+// MAC Address ของ main_hand (กรอกเป็น hex array โดยตรง)
 // วิธีหา: upload main_hand แล้วดู Serial Monitor จะแสดง MAC Address
-const char* MAIN_HAND_MAC_STRING = "XX:XX:XX:XX:XX:XX";  // เปลี่ยนตรงนี้!!!
-uint8_t mainHandMacAddress[6];  // จะถูกแปลงจาก String ใน setup()
+uint8_t mainHandMacAddress[6] = {0xB8, 0xF8, 0x62, 0xE9, 0x65, 0x78};  // เปลี่ยนตรงนี้!!!
 
 // ──── PERIPHERAL ADDRESSES & CONSTANTS ─────────────────────────────────────────
 const uint8_t ADS1015_1_ADDRESS = 0x48;
@@ -26,7 +26,7 @@ const int NUM_FLEX_SENSORS = 5;
 
 // Timer variables
 unsigned long lastTime = 0;
-unsigned long timerDelay = 5; // Send every 5ms (200 Hz)
+unsigned long timerDelay = 50; // Send every 50ms (20 Hz) - เพื่อความ stable
 
 // ──── PERIPHERAL OBJECTS ───────────────────────────────────────────────────────
 Adafruit_ADS1015 ads1015_1;
@@ -49,33 +49,20 @@ float filtered_ax = 0.0f, filtered_ay = 0.0f, filtered_az = 0.0f;
 // Statistics
 unsigned long sendSuccessCount = 0;
 unsigned long sendFailCount = 0;
-
-// ════════════════════════════════════════════════════════════════════════════════
-// ฟังก์ชันแปลง MAC String เป็น byte array
-// ════════════════════════════════════════════════════════════════════════════════
-bool parseMacAddress(const char* macStr, uint8_t* macArray) {
-  int values[6];
-  if (sscanf(macStr, "%x:%x:%x:%x:%x:%x",
-             &values[0], &values[1], &values[2],
-             &values[3], &values[4], &values[5]) == 6) {
-    for (int i = 0; i < 6; i++) {
-      macArray[i] = (uint8_t)values[i];
-    }
-    return true;
-  }
-  return false;
-}
+bool sendInProgress = false;  // ป้องกันการส่งทับซ้อน
 
 // ════════════════════════════════════════════════════════════════════════════════
 // ESP-NOW Callback เมื่อส่งข้อมูลสำเร็จ/ล้มเหลว
 // ════════════════════════════════════════════════════════════════════════════════
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  sendInProgress = false;  // ส่งเสร็จแล้ว
+
   if (status == ESP_NOW_SEND_SUCCESS) {
     sendSuccessCount++;
     // Serial.println("[ESP-NOW] ✓ Send Success");
   } else {
     sendFailCount++;
-    Serial.println("[ESP-NOW] ✗ Send Failed");
+    // Serial.println("[ESP-NOW] ✗ Send Failed");  // ลด log เพื่อไม่ให้ช้า
   }
 
   // แสดง statistics ทุก 1000 packets
@@ -144,7 +131,12 @@ void setup() {
   // เริ่ม I2C และ Serial
   Wire.begin(SENSOR_SDA, SENSOR_SCL);
   Serial.begin(9600);
-  while (!Serial) { delay(10); }
+
+  // รอ Serial Monitor สูงสุด 3 วินาที (ถ้าไม่เสียบ USB ก็ข้ามไป)
+  unsigned long serialStart = millis();
+  while (!Serial && (millis() - serialStart < 3000)) {
+    delay(10);
+  }
 
   Serial.println();
   Serial.println(F("░██████╗███████╗███╗░░██╗██████╗░███████╗██████╗░"));
@@ -171,52 +163,44 @@ void setup() {
   Serial.println(F("════════════════════════════════════════════════════════"));
 
   // Set WiFi mode (ไม่ต้องเชื่อมต่อ WiFi จริง)
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_STA);  // ESP-NOW requires WIFI_STA only, not WIFI_AP_STA
+  WiFi.disconnect();
+  delay(100);
 
   // แสดง MAC Address ของตัวเอง
   Serial.print("[Sender] My MAC Address: ");
   Serial.println(WiFi.macAddress());
 
-  // แปลง MAC Address String เป็น byte array
-  Serial.println("[Sender] Parsing Target MAC Address...");
-  Serial.print("[Sender] Target MAC: ");
-  Serial.println(MAIN_HAND_MAC_STRING);
-
-  if (!parseMacAddress(MAIN_HAND_MAC_STRING, mainHandMacAddress)) {
-    Serial.println();
-    Serial.println(F("╔═══════════════════════════════════════════════════╗"));
-    Serial.println(F("║               ❌ ERROR: INVALID MAC!              ║"));
-    Serial.println(F("╚═══════════════════════════════════════════════════╝"));
-    Serial.println(F("[ERROR] Invalid MAC Address format!"));
-    Serial.println(F("[ERROR] Format should be: XX:XX:XX:XX:XX:XX"));
-    Serial.println(F("[ERROR] Example: A0:B1:C2:D3:E4:F5"));
-    Serial.println(F("[ERROR] "));
-    Serial.println(F("[ERROR] HOW TO FIX:"));
-    Serial.println(F("[ERROR] 1. Upload main_hand code"));
-    Serial.println(F("[ERROR] 2. Check Serial Monitor for MAC Address"));
-    Serial.println(F("[ERROR] 3. Copy MAC and paste to MAIN_HAND_MAC_STRING"));
-    Serial.println(F("[ERROR] 4. Re-upload this code"));
-    Serial.println();
-    while(1) {
-      delay(1000);  // หยุดไม่ให้ทำงานต่อ
-    }
-  }
-
-  // แสดง MAC ที่แปลงแล้ว
-  Serial.print("[Sender] ✓ Parsed MAC: ");
-  for (int i = 0; i < 6; i++) {
-    Serial.printf("%02X", mainHandMacAddress[i]);
-    if (i < 5) Serial.print(":");
-  }
-  Serial.println();
-
-  // Init ESP-NOW
+  // Init ESP-NOW ก่อน (ต้อง init ก่อนค่อย set channel)
   Serial.print("[ESP-NOW] Initializing...");
   if (esp_now_init() != ESP_OK) {
     Serial.println(" ❌ FAILED!");
     ESP.restart();
   }
   Serial.println(" ✅ OK");
+
+  // Set WiFi channel หลัง ESP-NOW init
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+
+  // Verify channel
+  uint8_t primary_channel;
+  wifi_second_chan_t secondary_channel;
+  esp_wifi_get_channel(&primary_channel, &secondary_channel);
+  Serial.printf("[Sender] WiFi Channel: %d (verified)\n", primary_channel);
+
+  // Set TX power (40 = 10dBm, ค่าที่ stable กว่า 84)
+  esp_wifi_set_max_tx_power(40);
+  int8_t power;
+  esp_wifi_get_max_tx_power(&power);
+  Serial.printf("[Sender] TX Power: %d (= %.1f dBm)\n", power, power * 0.25f);
+
+  // แสดง Target MAC Address (ไม่ต้อง parse เพราะเป็น hex array โดยตรงแล้ว)
+  Serial.print("[Sender] Target MAC: ");
+  for (int i = 0; i < 6; i++) {
+    Serial.printf("%02X", mainHandMacAddress[i]);
+    if (i < 5) Serial.print(":");
+  }
+  Serial.println();
 
   // Register callback
   Serial.print("[ESP-NOW] Registering send callback...");
@@ -228,7 +212,7 @@ void setup() {
   esp_now_peer_info_t peerInfo;
   memset(&peerInfo, 0, sizeof(peerInfo));
   memcpy(peerInfo.peer_addr, mainHandMacAddress, 6);
-  peerInfo.channel = 0;
+  peerInfo.channel = 1;  // Must match WiFi channel
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
@@ -243,9 +227,11 @@ void setup() {
   Serial.println(F("════════════════════════════════════════════════════════"));
   Serial.println(F("         ✅ SETUP COMPLETE - READY TO SEND!            "));
   Serial.println(F("════════════════════════════════════════════════════════"));
-  Serial.println("[Info] Sending data at 200 Hz (every 5ms)");
+  Serial.println("[Info] Sending data at 20 Hz (every 50ms)");
   Serial.println("[Info] Data packet size: 56 bytes (14 floats)");
   Serial.println();
+
+  delay(1000);  // Wait 1 second before starting to send
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -274,8 +260,10 @@ void loop() {
   MyData.angle_y = atan2f(filtered_ax, sqrtf(filtered_ay * filtered_ay + filtered_az * filtered_az)) * RAD_TO_DEG;
   MyData.angle_z = atan2f(sqrtf(filtered_ax * filtered_ax + filtered_ay * filtered_ay), filtered_az) * RAD_TO_DEG;
 
-  // ส่งข้อมูลผ่าน ESP-NOW ทุก 5ms
-  if ((millis() - lastTime) > timerDelay) {
+  // ส่งข้อมูลผ่าน ESP-NOW ทุก 50ms (และต้องรอให้ส่งครั้งก่อนเสร็จก่อน)
+  if ((millis() - lastTime) >= timerDelay && !sendInProgress) {
+    sendInProgress = true;  // ล็อคไม่ให้ส่งซ้ำ
+
     // Pack ข้อมูล 14 floats เป็น byte array (56 bytes)
     uint8_t data[56];
     int offset = 0;
@@ -299,11 +287,25 @@ void loop() {
     esp_err_t result = esp_now_send(mainHandMacAddress, data, sizeof(data));
 
     if (result != ESP_OK) {
-      Serial.printf("[ESP-NOW] ⚠️ Send error: %d\n", result);
+      // Print error code for first 10 errors
+      static int errorCount = 0;
+      if (errorCount < 10) {
+        Serial.printf("[ESP-NOW] ⚠️ Send error code: %d (", result);
+        if (result == ESP_ERR_ESPNOW_NOT_INIT) Serial.print("NOT_INIT");
+        else if (result == ESP_ERR_ESPNOW_ARG) Serial.print("INVALID_ARG");
+        else if (result == ESP_ERR_ESPNOW_INTERNAL) Serial.print("INTERNAL_ERROR");
+        else if (result == ESP_ERR_ESPNOW_NO_MEM) Serial.print("NO_MEMORY");
+        else if (result == ESP_ERR_ESPNOW_NOT_FOUND) Serial.print("PEER_NOT_FOUND");
+        else if (result == ESP_ERR_ESPNOW_IF) Serial.print("INVALID_INTERFACE");
+        else Serial.print("UNKNOWN");
+        Serial.println(")");
+        errorCount++;
+      }
+      sendInProgress = false;  // ถ้าส่งไม่สำเร็จเลย ปลดล็อค
     }
 
     lastTime = millis();
   }
 
-  delay(10);
+  // No delay - let loop run as fast as possible to maintain timing
 }

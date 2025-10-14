@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <esp_now.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <Adafruit_ADS1X15.h>
 #include <QMI8658.h>
 #include <ArduinoJson.h>
@@ -14,9 +15,10 @@
 #define SENSOR_SDA  15
 #endif
 
-#define UART_TX_PIN 17  // ส่งข้อมูลไป main_hub
-#define UART_RX_PIN 18  // ไม่ได้ใช้จริง แต่ต้องมี
-#define UART_BAUD 115200
+// Hardware UART Pins (Serial1 บน ESP32-S3)
+#define RXD_PIN 17  // ไม่ได้ใช้จริง
+#define TXD_PIN 18  // ส่งข้อมูลไป main_hub GPIO18
+#define UART_BAUD 230400  // Hardware UART รองรับ baud rate สูง
 
 // ──── PERIPHERAL ADDRESSES & CONSTANTS ─────────────────────────────────────────
 const uint8_t ADS1015_1_ADDRESS = 0x48;
@@ -27,12 +29,15 @@ const int CALIBRATION_SAMPLES = 1000;
 // ──── DATA COLLECTION CONFIGURATION ────────────────────────────────────────────
 const int MAX_SAMPLES = 30;  // Number of samples before sending to hub
 bool COLLECTOR_MODE = false; // true = CSV only, false = Send to hub
+bool TEST_MODE = false;      // false = Use real sensor data
 
 // ──── PERIPHERAL OBJECTS ───────────────────────────────────────────────────────
 Adafruit_ADS1015 ads1015_1;
 Adafruit_ADS1015 ads1015_2;
 QMI8658          imu;
 QMI8658_Data d;
+
+// Hardware UART (Serial1) - no need to declare, it's built-in
 
 // ──── CALIBRATION & FILTER VARIABLES ───────────────────────────────────────────
 // Local (main_hand) calibration
@@ -72,7 +77,7 @@ struct LocalSensorData {
 LocalSensorData localData;
 
 // ──── JSON DATA BATCHING ────────────────────────────────────────────────────────
-StaticJsonDocument<8192> doc;
+JsonDocument doc;
 JsonArray feature;
 int sampleCount = 0;
 bool docInitialized = false;
@@ -81,10 +86,20 @@ bool docInitialized = false;
 unsigned long espnowReceiveCount = 0;
 unsigned long lastStatsTime = 0;
 
+// ──── FUNCTION PROTOTYPES ───────────────────────────────────────────────────────
+void printCountdown(int seconds, const char* message_prefix);
+
 // ════════════════════════════════════════════════════════════════════════════════
-// ESP-NOW Callback เมื่อรับข้อมูลจาก slave_hand
+// ESP-NOW Callback เมื่อรับข้อมูลจาก slave_hand (ESP-IDF v5+ compatible)
 // ════════════════════════════════════════════════════════════════════════════════
-void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
+void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) {
+  // Debug: Show first 5 packet lengths
+  static int packetDebugCount = 0;
+  if (packetDebugCount < 5) {
+    Serial.printf("[ESP-NOW] Packet received: len=%d (expected 56)\n", len);
+    packetDebugCount++;
+  }
+
   if (len == 56) {  // 14 floats × 4 bytes = 56 bytes
     int offset = 0;
 
@@ -107,12 +122,27 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
     slaveDataReceived = true;
     espnowReceiveCount++;
 
+    // แสดง message ทุกครั้งที่รับ (first 10, then every 100)
+    static unsigned long totalReceived = 0;
+    totalReceived++;
+    if (totalReceived <= 10 || totalReceived % 100 == 0) {
+      Serial.printf("[ESP-NOW] ✓ Received #%lu (%.1f, %.1f, %.1f)\n",
+                    totalReceived, slaveData.ax, slaveData.ay, slaveData.az);
+    }
+
     // แสดง statistics ทุก 5 วินาที
     if (millis() - lastStatsTime > 5000) {
       Serial.printf("[ESP-NOW] Received packets: %lu (%.1f Hz)\n",
                     espnowReceiveCount, espnowReceiveCount / 5.0f);
       espnowReceiveCount = 0;
       lastStatsTime = millis();
+    }
+  } else {
+    // Wrong packet size
+    static int wrongSizeCount = 0;
+    if (wrongSizeCount < 5) {
+      Serial.printf("[ESP-NOW] ⚠️ Wrong size: got %d bytes, expected 56\n", len);
+      wrongSizeCount++;
     }
   }
 }
@@ -316,7 +346,7 @@ void initializeDoc() {
   doc.clear();
   doc["Id"] = "1595123198513";
   doc["Status"] = 1;
-  feature = doc.createNestedArray("feature");
+  feature = doc["feature"].to<JsonArray>();
   sampleCount = 0;
   docInitialized = true;
 }
@@ -344,7 +374,7 @@ void addSampleToDoc() {
                    localData.flex[3], localData.flex[4]};
 
   // Add the temps array as a new row
-  JsonArray row = feature.createNestedArray();
+  JsonArray row = feature.add<JsonArray>();
   for (int i = 0; i < 29; i++) {
     row.add(temps[i]);
   }
@@ -365,10 +395,15 @@ void sendViaUART() {
   String jsonString;
   serializeJson(doc, jsonString);
 
-  Serial.printf("[UART] Sending %d samples (%d bytes)\n", sampleCount, jsonString.length());
+  unsigned long startTime = millis();
+  Serial.printf("[UART] Sending %d samples (%d bytes)...\n", sampleCount, jsonString.length());
 
-  // ส่งข้อมูลผ่าน UART พร้อม newline เป็น delimiter
+  // ส่งข้อมูลผ่าน Hardware UART (Serial1) พร้อม newline เป็น delimiter
   Serial1.println(jsonString);
+  Serial1.flush();  // รอให้ส่งเสร็จ
+
+  unsigned long duration = millis() - startTime;
+  Serial.printf("[UART] ✓ Sent in %lu ms\n", duration);
 
   // Reset for next batch
   initializeDoc();
@@ -380,11 +415,17 @@ void sendViaUART() {
 void setup() {
   // Start I2C and Serial
   Wire.begin(SENSOR_SDA, SENSOR_SCL);
-  Serial.begin(9600);  // USB Serial for debugging
-  while (!Serial) { delay(10); }
+  Serial.begin(115200);  // USB Serial for debugging (ต้องเร็วกว่า SoftwareSerial)
 
-  // Start UART for communication with main_hub
-  Serial1.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+  // รอ Serial Monitor สูงสุด 3 วินาที (ถ้าไม่เสียบ USB ก็ข้ามไป)
+  unsigned long serialStart = millis();
+  while (!Serial && (millis() - serialStart < 3000)) {
+    delay(10);
+  }
+
+  // Start Hardware UART (Serial1) for communication with main_hub
+  // ESP32-S3: Serial1 uses GPIO 17 (RX) and GPIO 18 (TX) by default
+  Serial1.begin(UART_BAUD, SERIAL_8N1, RXD_PIN, TXD_PIN);
   delay(100);
 
   Serial.println();
@@ -412,20 +453,37 @@ void setup() {
   Serial.println(F("════════════════════════════════════════════════════════"));
 
   // Set WiFi mode (ไม่ต้องเชื่อมต่อ WiFi จริง)
-  WiFi.mode(WIFI_STA);
+  WiFi.mode(WIFI_STA);  // ESP-NOW requires WIFI_STA only, not WIFI_AP_STA
+  WiFi.disconnect();
+  delay(100);  // Wait for WiFi to initialize
 
   // แสดง MAC Address ของตัวเอง
   Serial.print("[Main_Hand] My MAC Address: ");
   Serial.println(WiFi.macAddress());
   Serial.println("[Main_Hand] Copy this MAC to slave_hand's MAIN_HAND_MAC_STRING!");
 
-  // Init ESP-NOW
+  // Init ESP-NOW ก่อน (ต้อง init ก่อนค่อย set channel)
   Serial.print("[ESP-NOW] Initializing...");
   if (esp_now_init() != ESP_OK) {
     Serial.println(" ❌ FAILED!");
     ESP.restart();
   }
   Serial.println(" ✅ OK");
+
+  // Set WiFi channel หลัง ESP-NOW init
+  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+
+  // Verify channel
+  uint8_t primary_channel;
+  wifi_second_chan_t secondary_channel;
+  esp_wifi_get_channel(&primary_channel, &secondary_channel);
+  Serial.printf("[Main_Hand] WiFi Channel: %d (verified)\n", primary_channel);
+
+  // Set TX power (40 = 10dBm, ค่าที่ stable กว่า 84)
+  esp_wifi_set_max_tx_power(40);
+  int8_t power;
+  esp_wifi_get_max_tx_power(&power);
+  Serial.printf("[Main_Hand] TX Power: %d (= %.1f dBm)\n", power, power * 0.25f);
 
   // Register receive callback
   Serial.print("[ESP-NOW] Registering receive callback...");
@@ -434,11 +492,13 @@ void setup() {
 
   Serial.println();
   Serial.println(F("════════════════════════════════════════════════════════"));
-  Serial.println(F("         ⚡ UART INITIALIZATION                          "));
+  Serial.println(F("         ⚡ HARDWARE UART INITIALIZATION                 "));
   Serial.println(F("════════════════════════════════════════════════════════"));
-  Serial.printf("[UART] TX Pin: GPIO%d, RX Pin: GPIO%d (not used)\n", UART_TX_PIN, UART_RX_PIN);
+  Serial.printf("[UART] Using Serial1 (Hardware UART)\n");
+  Serial.printf("[UART] TX Pin: GPIO%d → main_hub GPIO18\n", TXD_PIN);
+  Serial.printf("[UART] RX Pin: GPIO%d (not used)\n", RXD_PIN);
   Serial.printf("[UART] Baud Rate: %d\n", UART_BAUD);
-  Serial.println("[UART] Ready to transmit to main_hub");
+  Serial.println("[UART] ✅ Hardware UART ready (DMA-based, non-blocking)");
 
   Serial.println();
   Serial.println(F("════════════════════════════════════════════════════════"));
@@ -459,9 +519,9 @@ void setup() {
 void loop() {
   checkCommand();
 
-  // ──── READ LOCAL SENSORS ────────────────────────────────────────────────────
+  // ──── READ LOCAL SENSORS (แต่ไม่บล็อค ESP-NOW callback) ────────────────────
   if (slaveDataReceived) {
-    // Read raw flex values
+    // Read raw flex values (ช้า ~15ms)
     readAllFlexSensors(flex_raw_value);
 
     // Apply calibration mapping for LOCAL sensors (raw -> 0-1000)
@@ -522,17 +582,24 @@ void loop() {
       localData.angle_x, localData.angle_y, localData.angle_z,
       localData.flex[0], localData.flex[1], localData.flex[2], localData.flex[3], localData.flex[4]
     );
-    Serial.printf("[Sensor] %s\n", outBuf);
+    // Serial.printf("[Sensor] %s\n", outBuf);
 
     // Add to JSON batch and send if needed
     if (!COLLECTOR_MODE) {
       addSampleToDoc();
+
+      // Debug: แสดง sample count
+      if (sampleCount == 1 || sampleCount % 10 == 0) {
+        Serial.printf("[JSON] Collected %d/%d samples\n", sampleCount, MAX_SAMPLES);
+      }
+
       if (sampleCount >= MAX_SAMPLES) {
         sendViaUART();
       }
     }
 
-    delay(10);
+    // ลด delay เพื่อไม่ให้พลาด ESP-NOW packets
+    delay(1);  // แค่ให้ yield เท่านั้น
   } else {
     // Waiting for slave_hand connection
     delay(50);
