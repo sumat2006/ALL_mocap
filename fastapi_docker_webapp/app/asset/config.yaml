@@ -4,6 +4,13 @@ ft_model: ./asset/model/thai_tts/model/model_850000.pt
 vocab_file: ./asset/model/thai_tts/vocab.txt
 rollback: ./asset/rollback.json
 asr_path: ./asset/model/thonburain-whisper
+prompt: เรียงคำต่อไปนี้ โดยถ้าเป็นคำเดี่ยวให้ใช้คำนั้นไปเลย
+volumn: 2
+speed: 0.5
+DELTA_ACC_THRESHOLD: 0.8
+DELTA_GYRO_THRESHOLD: 1
+DELTA_FLEX_THRESHOLD: 3
+WINDOW_SIZE: 2 
 
 
 

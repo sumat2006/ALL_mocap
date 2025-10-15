@@ -721,22 +721,22 @@ function sendMessage() {
     messageInput.value = '';
     
     // Show spinner while "thinking"
-    const spinnerId = addBotSpinner("Thinking", "dots");
+    // const spinnerId = addBotSpinner("Thinking", "dots");
     
     // Simulate bot processing time
-    setTimeout(() => {
-        const responses = [
-            "I received your message. How can I assist you further?",
-            "That's interesting! Tell me more about what you need.",
-            "I'm processing your request. Please wait a moment...",
-            "Thanks for your input! Here's what I found:",
-            "I understand. Let me help you with that."
-        ];
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+        // "I received your message. How can I assist you further?",
+    // "That's interesting! Tell me more about what you need.",
+    // "I'm processing your request. Please wait a moment...",
+    // "Thanks for your input! Here's what I found:",
+    // "I understand. Let me help you with that."
+    // setTimeout(() => {
+    //     const responses = [""];
+    //     const randomResponse = responses[Math.floor(Math.random() * responses.length)];
         
-        // Remove spinner and show response
-        removeBotSpinner(spinnerId, randomResponse,"bot");
-    }, 2000);
+    //     // Remove spinner and show response
+    //     addMessage(text, true);
+    //     removeBotSpinner(spinnerId, "","bot");
+    // }, 2000);
 }
 
 // Create file message displays in chat

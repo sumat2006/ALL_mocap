@@ -37,12 +37,14 @@ ft_model = config["ft_model"]
 vocab_file = config["vocab_file"]
 rollback = config["rollback"]
 asr_path = config["asr_path"]
+prompt = config["prompt"]
+DELTA_ACC_THRESHOLD = config["DELTA_ACC_THRESHOLD"]
+DELTA_GYRO_THRESHOLD = config["DELTA_GYRO_THRESHOLD"]
+DELTA_FLEX_THRESHOLD = config["DELTA_FLEX_THRESHOLD"]
+WINDOW_SIZE = config["WINDOW_SIZE"]   # ใช้ย้อนหลัง 5 segment
 
 "-----------------------------------------"
-DELTA_ACC_THRESHOLD = 0.8
-DELTA_GYRO_THRESHOLD = 1
-DELTA_FLEX_THRESHOLD = 3
-WINDOW_SIZE = 2   # ใช้ย้อนหลัง 5 segment
+
 ini_state = False
 classifier = RapidChangeWindowClassifier(DELTA_ACC_THRESHOLD,DELTA_GYRO_THRESHOLD,DELTA_FLEX_THRESHOLD,WINDOW_SIZE)
 model = CNNTimeSeriesClassifier((50,28),51)
@@ -241,7 +243,7 @@ async def predict_hand(payload: PredictRequest):
     print("payload",payload.Id,"Hand_id",hand_id,isRecordingHand,len(payload.feature),len(payload.feature[0]),"len_text_list",text_list)
     print(payload.feature)
     # if isRecordingHand and payload.Id == hand_id:
-    if isRecordingHand and payload.Id == hand_id:
+    if isRecordingHand:
         rows = payload.feature
         # print(rows)
         print("1")
@@ -267,14 +269,19 @@ async def predict_hand(payload: PredictRequest):
             state = False
             
     elif not isRecordingHand and (len(text_list) > 0):
-        output = seq.predict("เรียงประโยคนี้ให้หนอย " + " ".join(text_list))
+        # output = seq.predict(prompt + " ".join(text_list))
+        output = " ".join(text_list)
         print('2')
-        print(output[0]["generated_text"])
-        audio_profile = TTS(output[0]["generated_text"],
+        # print(output[0]["generated_text"])
+        if len(text_list) < 2:
+            add_text = "คำว่า"
+        else:
+            add_text = ""
+        audio_profile = TTS(add_text + output,
             voice="th_f_1",
             output="output.wav",
-            volume=2.0,
-            speed=0.8,
+            volume=config["volumn"],
+            speed=config["speed"],
             
         )
         
