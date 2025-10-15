@@ -185,7 +185,7 @@ Saved Model → FastAPI → Docker Container → Web Service → Predictions
 
 3. **Model Training**:
    ```bash
-   cd model/
+   cd model/src
    pip install -r requirements.txt
    python train.py
    ```
@@ -205,9 +205,9 @@ sign-language-detection/
 │   ├── codeFlexHardWare/           # ESP32 firmware
 │   └── sensor_data_collection_readme.md
 ├── model/                          # Machine learning components
-│   ├── model.py                    # CNN architecture
-│   ├── train.py                    # Training script
-│   ├── load_model.py              # Model loading utilities
+|   ├── src
+|   |   ├──model.py                    # CNN architecture
+│   |   ├── train.py                    # Training script
 │   └── README.md
 ├── fastapi_docker_webapp/          # Web application
 │   ├── app/                       # FastAPI application

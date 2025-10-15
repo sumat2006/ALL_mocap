@@ -1,4 +1,3 @@
-import imp
 from model import CNNTimeSeriesClassifier,ImprovedCustomDataset,train_model,save_model,evaluate_model
 import torch
 import pandas as pd

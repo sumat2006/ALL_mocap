@@ -9,8 +9,12 @@ docker compose up --build
 
 Application will be available at `http://localhost:8000/`.
 
-- `GET /` : interactive page to send text to `/predict`
-- `POST /predict` : JSON API, body `{ "text": "..." }`
+- `GET /` : interactive page to send text to `/predict_hand`
+- `POST /predict` : JSON API, body 
+`{"Id": str,
+ "Status":int,
+ "Features" List[List[float]]
+}`
 - `POST /predict-form` : Form POST (used by the interactive page)
 - `GET /logs` : web log viewer (last 200 lines by default) 
 
@@ -47,8 +51,13 @@ to run with uvicorn
 
 *all of the model will be kept in app/asset/model as a folder e.g. KhanoThom-1B. Template can be found in app/static/index.html and css, javascript is there also.* 
 
-
-
+# load model
+```
+python3 -m venv env
+activate env
+pip install -U "huggingface_hub[cli]"
+hf download repo_id --repo-type model --local_dir #ใส่ไว้ใน directory ที่ใช้ชื่อเดียวกันกับใน config.yaml
+```
 
 ```
 |── asset
