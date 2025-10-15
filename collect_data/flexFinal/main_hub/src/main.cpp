@@ -6,8 +6,8 @@
 #include <esp_wifi.h>
 
 // ──── WiFi Configuration ────────────────────────────────────────────────────────
-const char* ssid = "xxxxxxxxxx_2.4G";          // เปลี่ยนเป็น WiFi ของคุณ
-const char* password = "xxxxxxxxxx";           // เปลี่ยนเป็น Password ของคุณ
+const char* ssid = "massmore_2.4G";          // เปลี่ยนเป็น WiFi ของคุณ
+const char* password = "xxxxxxxx";           // เปลี่ยนเป็น Password ของคุณ
 
 // ──── API Configuration ─────────────────────────────────────────────────────────
 const char* serverUrl = "https://a6751c7cdec1.ngrok-free.app/predict_hand";  // เปลี่ยนเป็น URL ของคุณ
@@ -20,9 +20,6 @@ const char* serverUrl = "https://a6751c7cdec1.ngrok-free.app/predict_hand";  // 
 // ──── Queue Configuration ───────────────────────────────────────────────────────
 #define MAX_QUEUE_SIZE 5           // เก็บได้สูงสุด 5 payloads (~35KB RAM)
 #define MAX_PAYLOAD_SIZE 8192      // ขนาด payload ต่อ 1 item (8KB)
-
-// ──── LED Status (Optional) ─────────────────────────────────────────────────────
-#define LED_BUILTIN 2  // Built-in LED for status indication
 
 // ──── Circular Queue Structure ─────────────────────────────────────────────────
 struct PayloadQueue {
@@ -88,29 +85,9 @@ unsigned long lastStatsTime = 0;
 
 // State management
 bool isSending = false;
-unsigned long lastSendAttempt = 0;
-int currentRetryCount = 0;
-const int MAX_RETRIES = 3;
 
-// ────────────────────────────────────────────────────────────────────────────────
-// LED Control Functions
-// ────────────────────────────────────────────────────────────────────────────────
-void ledOn() {
-  digitalWrite(LED_BUILTIN, HIGH);
-}
-
-void ledOff() {
-  digitalWrite(LED_BUILTIN, LOW);
-}
-
-void ledBlink(int times, int delayMs) {
-  for (int i = 0; i < times; i++) {
-    ledOn();
-    delay(delayMs);
-    ledOff();
-    delay(delayMs);
-  }
-}
+// ──── FreeRTOS Task Handles ─────────────────────────────────────────────────
+TaskHandle_t uartTaskHandle = NULL;
 
 // ════════════════════════════════════════════════════════════════════════════════
 // WiFi Setup
@@ -132,7 +109,6 @@ void setupWiFi() {
   while (WiFi.status() != WL_CONNECTED && attempts < 40) {
     delay(500);
     Serial.print(".");
-    ledBlink(1, 100);
     attempts++;
   }
 
@@ -144,15 +120,12 @@ void setupWiFi() {
     Serial.print("[WiFi] Signal strength: ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
-    ledOn();
-    delay(1000);
-    ledOff();
   } else {
     Serial.println();
     Serial.println("[WiFi] ✗ Connection failed!");
     Serial.println("[WiFi] Please check your WiFi credentials.");
     Serial.println("[WiFi] Device will restart in 10 seconds...");
-    ledBlink(10, 500);
+    delay(10000);
     ESP.restart();
   }
 }
@@ -165,7 +138,7 @@ bool isHttpsUrl(const char* url) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// Send HTTP/HTTPS POST Request (Non-blocking attempt)
+// Send HTTP/HTTPS POST Request (Fresh connection each time - ngrok compatible)
 // ════════════════════════════════════════════════════════════════════════════════
 bool sendHttpPostRequest(const String& jsonString) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -173,90 +146,57 @@ bool sendHttpPostRequest(const String& jsonString) {
     return false;
   }
 
-  HTTPClient http;
-  bool useHttps = isHttpsUrl(serverUrl);
   bool success = false;
+  bool useHttps = isHttpsUrl(serverUrl);
 
-  // สร้าง client ตามประเภท (ใช้ stack allocation แทน heap)
+  // ✅ สร้าง client ใหม่ทุกครั้ง (เพราะ ngrok อาจไม่ support Keep-Alive ได้ดี)
+  WiFiClientSecure localClient;
+  HTTPClient localHttp;
+
   if (useHttps) {
-    WiFiClientSecure secureClient;
-    secureClient.setInsecure();
-
-    if (!http.begin(secureClient, serverUrl)) {
-      Serial.println("[HTTP] ✗ Failed to begin HTTPS connection");
-      return false;
-    }
-
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(15000); // 15 seconds timeout
-
-    Serial.printf("[HTTP] Sending %d bytes (Queue: %d/%d)...\n",
-                  jsonString.length(), sendQueue.count, MAX_QUEUE_SIZE);
-
-    ledBlink(2, 30);  // Quick blink when sending
-
-    int httpResponseCode = http.POST(jsonString);
-
-    if (httpResponseCode > 0) {
-      if (httpResponseCode == 200) {
-        String response = http.getString();
-        Serial.printf("[HTTP] ✓ Success! Response: %s\n", response.c_str());
-        httpSuccessCount++;
-        success = true;
-        ledOn();
-        delay(50);
-        ledOff();
-      } else {
-        Serial.printf("[HTTP] ⚠️ Status %d\n", httpResponseCode);
-        httpFailCount++;
-      }
-    } else {
-      Serial.printf("[HTTP] ✗ Error: %s\n", http.errorToString(httpResponseCode).c_str());
-      httpFailCount++;
-    }
-
-    http.end();
-    // secureClient จะถูก destroy อัตโนมัติ (stack cleanup)
-
-  } else {
-    WiFiClient client;
-
-    if (!http.begin(client, serverUrl)) {
-      Serial.println("[HTTP] ✗ Failed to begin HTTP connection");
-      return false;
-    }
-
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(15000);
-
-    Serial.printf("[HTTP] Sending %d bytes (Queue: %d/%d)...\n",
-                  jsonString.length(), sendQueue.count, MAX_QUEUE_SIZE);
-
-    ledBlink(2, 30);
-
-    int httpResponseCode = http.POST(jsonString);
-
-    if (httpResponseCode > 0) {
-      if (httpResponseCode == 200) {
-        String response = http.getString();
-        Serial.printf("[HTTP] ✓ Success! Response: %s\n", response.c_str());
-        httpSuccessCount++;
-        success = true;
-        ledOn();
-        delay(50);
-        ledOff();
-      } else {
-        Serial.printf("[HTTP] ⚠️ Status %d\n", httpResponseCode);
-        httpFailCount++;
-      }
-    } else {
-      Serial.printf("[HTTP] ✗ Error: %s\n", http.errorToString(httpResponseCode).c_str());
-      httpFailCount++;
-    }
-
-    http.end();
-    // client จะถูก destroy อัตโนมัติ (stack cleanup)
+    // ✅ IGNORE SSL: ปิดการตรวจสอบ SSL certificate (สำหรับ ngrok/self-signed cert)
+    localClient.setInsecure();
+    localClient.setTimeout(15);  // 15 วินาที (เพิ่มเวลาสำหรับ SSL handshake)
+    localClient.setHandshakeTimeout(15);  // Timeout สำหรับ SSL handshake
   }
+
+  // เริ่ม connection
+  if (!localHttp.begin(localClient, serverUrl)) {
+    Serial.println("[HTTP] ✗ Failed to begin connection");
+    localHttp.end();
+    return false;
+  }
+
+  // ตั้งค่า headers (ngrok ต้องการ User-Agent)
+  localHttp.addHeader("Content-Type", "application/json");
+  localHttp.addHeader("User-Agent", "ESP32-HTTPClient/1.0");
+  localHttp.setTimeout(15000);  // 15 วินาที timeout
+
+  Serial.printf("[HTTP] Sending %d bytes (Queue: %d/%d)...\n",
+                jsonString.length(), sendQueue.count, MAX_QUEUE_SIZE);
+
+  // ส่งข้อมูล
+  int httpResponseCode = localHttp.POST(jsonString);
+
+  if (httpResponseCode > 0) {
+    if (httpResponseCode == 200) {
+      String response = localHttp.getString();
+      Serial.printf("[HTTP] ✓ Success! Response: %s\n", response.c_str());
+      httpSuccessCount++;
+      success = true;
+    } else {
+      Serial.printf("[HTTP] ⚠️ Status %d\n", httpResponseCode);
+      httpFailCount++;
+    }
+  } else {
+    Serial.printf("[HTTP] ✗ Error: %s (code: %d)\n",
+                  localHttp.errorToString(httpResponseCode).c_str(),
+                  httpResponseCode);
+    httpFailCount++;
+  }
+
+  // ✅ ปิด connection ทุกครั้ง (ป้องกัน SSL EOF error)
+  localHttp.end();
 
   // แสดง statistics ทุก 10 requests
   if ((httpSuccessCount + httpFailCount) % 10 == 0 && (httpSuccessCount + httpFailCount) > 0) {
@@ -270,7 +210,7 @@ bool sendHttpPostRequest(const String& jsonString) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// Process Queue (Background Sender)
+// Process Queue (NO RETRY - Drop on Failure)
 // ════════════════════════════════════════════════════════════════════════════════
 void processQueue() {
   // ถ้ากำลังส่งอยู่ ข้ามไป
@@ -285,91 +225,96 @@ void processQueue() {
 
   // เริ่มส่ง
   isSending = true;
-  String payload = sendQueue.peek();  // ดูแต่ยังไม่เอาออก
+  String payload = sendQueue.dequeue();  // ✅ เอาออกจาก queue ทันที (ไม่ peek)
 
+  // ส่งข้อมูล
   bool sent = sendHttpPostRequest(payload);
 
   if (sent) {
-    // สำเร็จ - เอาออกจาก queue
-    sendQueue.dequeue();
-    currentRetryCount = 0;
+    // สำเร็จ
+    Serial.printf("[Queue] ✓ Sent successfully (Queue: %d/%d remaining)\n",
+                  sendQueue.count, MAX_QUEUE_SIZE);
   } else {
-    // ล้มเหลว - retry
-    currentRetryCount++;
-
-    if (currentRetryCount >= MAX_RETRIES) {
-      // เกิน retry limit - drop และส่งต่อไป
-      Serial.printf("[Queue] ⚠️ Max retries reached, dropping payload\n");
-      sendQueue.dequeue();
-      queueDropCount++;
-      currentRetryCount = 0;
-      ledBlink(5, 100);  // Error pattern
-    } else {
-      // รอก่อน retry
-      Serial.printf("[Queue] Retry %d/%d in 1s...\n", currentRetryCount, MAX_RETRIES);
-      delay(1000);
-    }
+    // ✅ ล้มเหลว - DROP ทันที ไม่ retry
+    Serial.printf("[Queue] ✗ Failed to send, DROPPED (Queue: %d/%d remaining)\n",
+                  sendQueue.count, MAX_QUEUE_SIZE);
+    queueDropCount++;
   }
 
   isSending = false;
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// Process Incoming Hardware UART Data (Non-blocking)
+// UART RX Task - Runs on Core 0 (High Priority)
 // ════════════════════════════════════════════════════════════════════════════════
-void processUartData() {
-  while (Serial1.available()) {
-    char c = Serial1.read();
+void uartTask(void *parameter) {
+  Serial.println("[Task] UART RX Task started on Core 0");
 
-    if (c == '\n') {
-      // ได้ JSON string ครบแล้ว
-      if (uartBuffer.length() > 0) {
-        totalReceivedCount++;
-        Serial.printf("[UART] Received payload #%lu (%d bytes)\n",
-                      totalReceivedCount, uartBuffer.length());
+  while (true) {
+    // อ่านข้อมูลจาก UART อย่างต่อเนื่อง (high priority)
+    while (Serial1.available()) {
+      char c = Serial1.read();
 
-        // ตรวจสอบ JSON format (แค่ครั้งแรก)
-        static int debugCount = 0;
-        if (debugCount < 1) {
-          Serial.printf("[DEBUG] First char: '%c' (0x%02X)\n", uartBuffer.charAt(0), (uint8_t)uartBuffer.charAt(0));
-          Serial.printf("[DEBUG] Last char: '%c' (0x%02X)\n",
-                        uartBuffer.charAt(uartBuffer.length() - 1),
-                        (uint8_t)uartBuffer.charAt(uartBuffer.length() - 1));
-          debugCount++;
+      if (c == '\n') {
+        // ได้ JSON string ครบแล้ว
+        if (uartBuffer.length() > 0) {
+          totalReceivedCount++;
+          Serial.printf("[UART] Received payload #%lu (%d bytes) [Core 0]\n",
+                        totalReceivedCount, uartBuffer.length());
+
+          // ตรวจสอบ JSON format (แค่ครั้งแรก)
+          static int debugCount = 0;
+          if (debugCount < 1) {
+            Serial.printf("[DEBUG] First char: '%c' (0x%02X)\n", uartBuffer.charAt(0), (uint8_t)uartBuffer.charAt(0));
+            Serial.printf("[DEBUG] Last char: '%c' (0x%02X)\n",
+                          uartBuffer.charAt(uartBuffer.length() - 1),
+                          (uint8_t)uartBuffer.charAt(uartBuffer.length() - 1));
+            debugCount++;
+          }
+
+          // Format ถูกต้อง - ใส่เข้า queue
+          if (sendQueue.isFull()) {
+            // Queue เต็ม - drop oldest
+            String dropped = sendQueue.dequeue();
+            queueDropCount++;
+            Serial.println("[Queue] ⚠️ Queue full! Dropping oldest payload.");
+          }
+
+          // Enqueue
+          if (sendQueue.enqueue(uartBuffer)) {
+            Serial.printf("[Queue] ✓ Enqueued (Queue: %d/%d)\n",
+                          sendQueue.count, MAX_QUEUE_SIZE);
+          } else {
+            Serial.println("[Queue] ✗ Enqueue failed!");
+            queueDropCount++;
+          }
+
+          // Clear buffer
+          uartBuffer = "";
         }
-
-        // Format ถูกต้อง - ใส่เข้า queue
-        if (sendQueue.isFull()) {
-          // Queue เต็ม - drop oldest
-          String dropped = sendQueue.dequeue();
-          queueDropCount++;
-          Serial.println("[Queue] ⚠️ Queue full! Dropping oldest payload.");
-          ledBlink(3, 50);
-        }
-
-        // Enqueue
-        if (sendQueue.enqueue(uartBuffer)) {
-          Serial.printf("[Queue] ✓ Enqueued (Queue: %d/%d)\n",
-                        sendQueue.count, MAX_QUEUE_SIZE);
-        } else {
-          Serial.println("[Queue] ✗ Enqueue failed!");
-          queueDropCount++;
-        }
-
-        // Clear buffer
-        uartBuffer = "";
-      }
-    } else {
-      // สะสม character
-      if (uartBuffer.length() < UART_BUFFER_SIZE) {
-        uartBuffer += c;
       } else {
-        Serial.println("[UART] ⚠️ Buffer overflow! Clearing buffer.");
-        uartBuffer = "";
-        queueDropCount++;
+        // สะสม character
+        if (uartBuffer.length() < UART_BUFFER_SIZE) {
+          uartBuffer += c;
+        } else {
+          Serial.println("[UART] ⚠️ Buffer overflow! Clearing buffer.");
+          uartBuffer = "";
+          queueDropCount++;
+        }
       }
     }
+
+    // Yield to other tasks (แต่ priority สูงกว่า loop จะได้รัน CPU บ่อย)
+    vTaskDelay(1 / portTICK_PERIOD_MS);  // Delay 1ms
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Process Incoming Hardware UART Data (Deprecated - ใช้ Task แทน)
+// ════════════════════════════════════════════════════════════════════════════════
+void processUartData() {
+  // ฟังก์ชันนี้ถูกแทนที่ด้วย uartTask() บน Core 0
+  // เก็บไว้เพื่อ backward compatibility (ไม่ถูกเรียกแล้ว)
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -382,7 +327,6 @@ void checkWiFiConnection() {
 
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("[WiFi] Connection lost! Reconnecting...");
-      ledBlink(5, 200);
       setupWiFi();
     }
   }
@@ -457,11 +401,7 @@ void checkCommand() {
 // SETUP
 // ════════════════════════════════════════════════════════════════════════════════
 void setup() {
-  // Initialize LED
-  pinMode(LED_BUILTIN, OUTPUT);
-  ledOff();
-
-  // Start Serial for debugging (ต้องเร็วกว่า SoftwareSerial)
+  // Start Serial for debugging
   Serial.begin(115200);
   delay(1000);  // รอให้ Serial พร้อม
 
@@ -520,6 +460,35 @@ void setup() {
 
   Serial.println();
   Serial.println(F("════════════════════════════════════════════════════════"));
+  Serial.println(F("         ⚡ DUAL-CORE TASK INITIALIZATION                "));
+  Serial.println(F("════════════════════════════════════════════════════════"));
+  Serial.println("[Task] Creating UART RX task on Core 0...");
+
+  // Reserve buffer ก่อนสร้าง task
+  uartBuffer.reserve(UART_BUFFER_SIZE);
+
+  // สร้าง UART RX Task บน Core 0 (priority สูง)
+  xTaskCreatePinnedToCore(
+    uartTask,           // Task function
+    "UART_RX_Task",     // Task name
+    8192,               // Stack size (8KB)
+    NULL,               // Parameters
+    2,                  // Priority (2 = สูงกว่า loop ที่เป็น 1)
+    &uartTaskHandle,    // Task handle
+    0                   // Core 0 (PRO_CPU)
+  );
+
+  if (uartTaskHandle != NULL) {
+    Serial.println("[Task] ✅ UART RX Task created on Core 0 (Priority: 2)");
+  } else {
+    Serial.println("[Task] ❌ Failed to create UART RX Task!");
+  }
+
+  Serial.println("[Task] Main loop will run on Core 1 (APP_CPU)");
+  Serial.println("[Task] Architecture: Core 0 = UART RX | Core 1 = HTTP TX");
+
+  Serial.println();
+  Serial.println(F("════════════════════════════════════════════════════════"));
   Serial.println(F("         ✅ SETUP COMPLETE - READY TO FORWARD!          "));
   Serial.println(F("════════════════════════════════════════════════════════"));
   Serial.println("[Info] Waiting for data from main_hand via Hardware UART");
@@ -529,20 +498,19 @@ void setup() {
   Serial.println("[Info] Type 'help' for a list of commands.");
   Serial.println();
 
-  uartBuffer.reserve(UART_BUFFER_SIZE);
   lastStatsTime = millis();
-
-  ledBlink(3, 200);  // Startup complete signal
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// MAIN LOOP (Non-blocking)
+// MAIN LOOP - Runs on Core 1 (APP_CPU)
 // ════════════════════════════════════════════════════════════════════════════════
 void loop() {
+  // Core 1: HTTP Transmission + WiFi Management (ช้าได้ไม่กระทบ UART RX)
   checkCommand();          // ตรวจสอบ Serial commands
   checkWiFiConnection();   // ตรวจสอบ WiFi ทุก 10 วินาที
-  processUartData();       // รับข้อมูลจาก UART (non-blocking)
-  processQueue();          // ส่งข้อมูลจาก queue (non-blocking)
+  processQueue();          // ส่งข้อมูลจาก queue (blocking HTTP ไม่กระทบ Core 0)
 
-  delay(1);  // Small delay to prevent watchdog issues
+  // Note: processUartData() ถูกแทนที่ด้วย uartTask() บน Core 0 แล้ว
+
+  delay(10);  // Longer delay เพราะ HTTP ช้าอยู่แล้ว (ไม่กระทบ UART RX ที่ Core 0)
 }

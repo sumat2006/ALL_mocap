@@ -90,9 +90,15 @@ unsigned long lastStatsTime = 0;
 void printCountdown(int seconds, const char* message_prefix);
 
 // ════════════════════════════════════════════════════════════════════════════════
-// ESP-NOW Callback เมื่อรับข้อมูลจาก slave_hand (ESP-IDF v5+ compatible)
+// ESP-NOW Callback เมื่อรับข้อมูลจาก slave_hand (รองรับทั้ง ESP-IDF v4 และ v5)
 // ════════════════════════════════════════════════════════════════════════════════
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+// ESP-IDF v5.x (ใหม่) - ใช้ esp_now_recv_info struct
 void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) {
+#else
+// ESP-IDF v4.x (เก่า) - ใช้ MAC address โดยตรง
+void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
+#endif
   // Debug: Show first 5 packet lengths
   static int packetDebugCount = 0;
   if (packetDebugCount < 5) {
