@@ -1,14 +1,14 @@
 import torch.nn as nn
 import torch.nn.functional as f
 from torch.utils.data import Dataset,DataLoader
-from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
+# from torch.optim.lr_scheduler import StepLR,ReduceLROnPlateau
 import torch.optim as optim
 from sklearn.metrics import f1_score, recall_score, accuracy_score, classification_report,precision_score
 from sklearn.metrics import confusion_matrix, classification_report
-from scipy import signal
+# from scipy import signal
 import os
 from collections import Counter
-import random
+# import random
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import torch
 import numpy as np
@@ -93,8 +93,8 @@ class CNNTimeSeriesClassifier(nn.Module):
         
         # Fully connected layers
         self.fc1 = nn.Linear(self.flatten_size, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, n_classes)
+        self.fc2 = nn.Linear(64, n_classes)
+        # self.fc3 = nn.Linear(64, n_classes)
         
         # Activation and regularization
         self.relu = nn.ReLU()
@@ -164,7 +164,7 @@ class CNNTimeSeriesClassifier(nn.Module):
         # x = self.relu(x)
         # x = self.dropout(x)
         
-        x = self.fc3(x)
+        x = self.fc2(x)
         
         return x
     
