@@ -46,7 +46,7 @@ to run with uvicorn
 | :------ | :---------- | :------ |
 | ASR | Thonburain whisper | https://github.com/biodatlab/thonburian-whisper | 
 | LLM | KhanommThan | https://huggingface.co/pythainlp/KhanomTanLLM-1B |
-| TTS | vachanatts | [-](https://github.com/VYNCX/VachanaTTS.git) |
+| TTS | vachanatts | https://github.com/VYNCX/VachanaTTS.git |
 | Hand-Sign | Our model | - |
 
 *all of the model will be kept in app/asset/model as a folder e.g. KhanoThom-1B. Template can be found in app/static/index.html and css, javascript is there also.* 
