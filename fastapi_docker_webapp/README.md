@@ -87,8 +87,6 @@ Template (function explain is in /app/README.md)
   ├── styles.css                  # store css
 ```
 
-## Vanchantts
-> is use to do tts in this work.
 
 # Great Reminder
   The fall of accuracy occured from a testset that is less than we expect and need to test and data is not in a realword situation enough so the accuracy will be falling aprat when test on production in this case 89 -> 43 acc.
